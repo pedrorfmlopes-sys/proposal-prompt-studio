@@ -102,6 +102,10 @@ In desktop/Tauri mode, prompts are saved in SQLite through `prompt_runs` and the
 existing trigger updates draft proposals to `prompt_generated`. In web/Vite
 preview mode, prompts are stored in `localStorage`.
 
+Prompt generation exists in both TypeScript preview mode and Rust/Tauri runtime.
+Both generators must keep the same section order, validation rules, commercial
+rounding language, and "do not invent data" instructions.
+
 ## Create The Local Database
 
 If `sqlite3` is installed, run:

@@ -1,4 +1,5 @@
 import { strict as assert } from "node:assert";
+import { readFileSync } from "node:fs";
 import { calculateFinalUnitPrice } from "../src/services/priceCalculationService";
 import {
   calculateLineTotal,
@@ -312,6 +313,26 @@ const promptProposal: ProposalDetail = {
   ],
 };
 const prompt = generateStructuredPrompt(promptProposal);
+const requiredPromptSections = [
+  "# Objetivo",
+  "# Contexto da proposta",
+  "# Dados do cliente e projeto",
+  "# Layout a seguir",
+  "# Condições comerciais",
+  "# Regras de cálculo aplicadas",
+  "# Artigos da proposta",
+  "# Totais e validações",
+  "# Instruções de preservação de layout",
+  "# Notas obrigatórias",
+  "# Resultado pretendido",
+  "# Validações antes de terminar",
+];
+let previousSectionIndex = -1;
+for (const section of requiredPromptSections) {
+  const sectionIndex = prompt.indexOf(section);
+  assert.ok(sectionIndex > previousSectionIndex, `Missing or out-of-order section: ${section}`);
+  previousSectionIndex = sectionIndex;
+}
 assert.match(prompt, /PROP-2026-001/);
 assert.match(prompt, /Hotelaria Lisboa/);
 assert.match(prompt, /Projeto Hotelaria Lisboa/);
@@ -324,6 +345,25 @@ assert.match(prompt, /line_total = final_unit_price × quantity/);
 assert.match(prompt, /Não inventar produtos, links, imagens/);
 assert.match(prompt, /ceil_2_decimals/);
 assert.match(prompt, /divisão por 0,85/);
+assert.match(prompt, /Validação do total geral: OK/);
+assert.match(prompt, /F3121WLX8CR: OK - 61\.57 x 220 = 13545\.40/);
+assert.match(prompt, /Não confundir multiplicar por 1,15 com dividir por 0,85/);
+
+const rustPromptGenerator = readFileSync(
+  "src-tauri/src/prompt_commands.rs",
+  "utf-8",
+);
+for (const section of requiredPromptSections) {
+  assert.ok(
+    rustPromptGenerator.includes(section),
+    `Rust prompt generator missing section: ${section}`,
+  );
+}
+assert.match(rustPromptGenerator, /Validação do total geral/);
+assert.match(rustPromptGenerator, /Validações por linha/);
+assert.match(rustPromptGenerator, /ceil_2_decimals/);
+assert.match(rustPromptGenerator, /Não confundir multiplicar por 1,15 com dividir por 0,85/);
+assert.match(rustPromptGenerator, /fn format_rule/);
 
 console.log("Service tests passed.");
 
