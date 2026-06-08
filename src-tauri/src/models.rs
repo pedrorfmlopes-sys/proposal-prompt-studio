@@ -162,6 +162,9 @@ pub struct ProposalDetail {
     pub layout_name: Option<String>,
     pub pricing_rule_id: Option<i64>,
     pub pricing_rule_name: Option<String>,
+    pub pricing_rule_code: Option<String>,
+    pub pricing_rule_factor: Option<f64>,
+    pub pricing_rule_rounding_mode: Option<String>,
     pub local_folder_path: Option<String>,
     pub notes: Option<String>,
     pub items: Vec<ProposalItem>,
@@ -186,4 +189,18 @@ pub struct ProposalItem {
     pub line_total: f64,
     pub notes: Option<String>,
     pub sort_order: i64,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PromptRun {
+    pub id: i64,
+    pub proposal_id: i64,
+    pub prompt_title: String,
+    pub prompt_text: String,
+    pub prompt_format: String,
+    pub generated_at: String,
+    pub copied_at: Option<String>,
+    pub exported_path: Option<String>,
+    pub notes: Option<String>,
 }

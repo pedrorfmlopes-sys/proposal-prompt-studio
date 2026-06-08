@@ -110,6 +110,9 @@ export interface ProposalDetail extends ProposalSummary {
   layoutName: string | null;
   pricingRuleId: number | null;
   pricingRuleName: string | null;
+  pricingRuleCode?: string | null;
+  pricingRuleFactor?: number | null;
+  pricingRuleRoundingMode?: RoundingMode | null;
   localFolderPath: string | null;
   notes: string | null;
   items: ProposalItem[];
@@ -194,6 +197,16 @@ export interface PromptRun {
   promptText: string;
   promptFormat: "plain_text" | "markdown";
   generatedAt: string;
+  copiedAt: string | null;
+  exportedPath: string | null;
+  notes: string | null;
+}
+
+export type PromptRunDetail = PromptRun;
+
+export interface GeneratePromptResult {
+  promptRun: PromptRunDetail;
+  proposal: ProposalDetail | null;
 }
 
 export interface FinalDocument {

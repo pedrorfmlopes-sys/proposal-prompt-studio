@@ -2,6 +2,7 @@ mod commands;
 mod db;
 mod folder_service;
 mod models;
+mod prompt_commands;
 mod proposal_commands;
 
 pub fn run() {
@@ -22,6 +23,10 @@ pub fn run() {
             proposal_commands::add_proposal_item,
             proposal_commands::get_proposal_items,
             proposal_commands::update_proposal_total,
+            prompt_commands::generate_proposal_prompt,
+            prompt_commands::get_prompt_runs,
+            prompt_commands::get_latest_prompt_run,
+            prompt_commands::get_prompt_run_by_id,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Proposal Prompt Studio");

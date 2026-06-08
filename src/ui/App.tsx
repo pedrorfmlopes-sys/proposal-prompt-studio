@@ -16,6 +16,12 @@ import {
   getProposals,
 } from "../services/proposalService";
 import { getActivePricingRules } from "../services/pricingRuleService";
+import {
+  copyPromptToClipboard,
+  generateProposalPrompt,
+  getLatestPromptRun,
+  getPromptRuns,
+} from "../services/promptRunService";
 import { getAllSettings } from "../services/settingsService";
 import type {
   AppSetting,
@@ -26,6 +32,7 @@ import type {
   PricingRule,
   ProposalDetail,
   ProposalSummary,
+  PromptRunDetail,
 } from "../types";
 
 type View = "dashboard" | "new" | "list" | "detail";
@@ -373,6 +380,38 @@ function ProposalListView({
 }
 
 function ProposalDetailView({ proposal }: { proposal: ProposalDetail }) {
+  const [promptRuns, setPromptRuns] = useState<PromptRunDetail[]>([]);
+  const [visiblePrompt, setVisiblePrompt] = useState<PromptRunDetail | null>(null);
+  const [message, setMessage] = useState("");
+
+  const refreshPrompts = useCallback(() => {
+    getPromptRuns(proposal.id).then(setPromptRuns);
+    getLatestPromptRun(proposal.id).then(setVisiblePrompt);
+  }, [proposal.id]);
+
+  useEffect(() => {
+    refreshPrompts();
+  }, [refreshPrompts]);
+
+  function generatePrompt() {
+    generateProposalPrompt(proposal.id)
+      .then(({ promptRun }) => {
+        setVisiblePrompt(promptRun);
+        setMessage("Prompt gerada e guardada.");
+        refreshPrompts();
+      })
+      .catch((error: unknown) => {
+        setMessage(error instanceof Error ? error.message : "Erro ao gerar prompt.");
+      });
+  }
+
+  function copyPrompt() {
+    if (!visiblePrompt) return;
+    copyPromptToClipboard(visiblePrompt.promptText)
+      .then(() => setMessage("Prompt copiada para a area de transferencia."))
+      .catch(() => setMessage("Nao foi possivel copiar a prompt."));
+  }
+
   return (
     <section className="workspace">
       <header><p className="eyebrow">Detalhe</p><h1>{proposal.proposalNumber}</h1></header>
@@ -386,6 +425,31 @@ function ProposalDetailView({ proposal }: { proposal: ProposalDetail }) {
       <p><strong>Regra comercial:</strong> {proposal.pricingRuleName ?? proposal.pricingRuleId ?? "-"}</p>
       <p><strong>Pasta local:</strong> {proposal.localFolderPath ?? "-"}</p>
       <ItemsTable items={proposal.items} />
+      <section className="sectionBand">
+        <h2>Prompts geradas</h2>
+        <div className="actions">
+          <button onClick={generatePrompt}>Gerar prompt</button>
+          <button onClick={() => getLatestPromptRun(proposal.id).then(setVisiblePrompt)}>
+            Ver ultima prompt
+          </button>
+          <button onClick={copyPrompt} disabled={!visiblePrompt}>Copiar prompt</button>
+        </div>
+        {message && <p className="statusNote">{message}</p>}
+        <ul className="promptList">
+          {promptRuns.map((run) => (
+            <li key={run.id}>
+              <button onClick={() => setVisiblePrompt(run)}>{run.promptTitle}</button>{" "}
+              <span>{run.generatedAt}</span>
+            </li>
+          ))}
+        </ul>
+        {visiblePrompt && (
+          <label className="wideLabel">
+            Prompt gerada em {visiblePrompt.generatedAt}
+            <textarea readOnly className="promptText" value={visiblePrompt.promptText} />
+          </label>
+        )}
+      </section>
     </section>
   );
 }

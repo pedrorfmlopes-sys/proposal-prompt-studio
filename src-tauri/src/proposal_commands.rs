@@ -98,7 +98,8 @@ pub fn get_proposal_by_id(app: AppHandle, id: i64) -> Result<Option<ProposalDeta
                     p.total_amount, p.language, p.currency, p.vat_mode,
                     p.validity_text, p.commercial_conditions, p.proposal_type,
                     p.layout_id, l.name, p.pricing_rule_id, r.name,
-                    p.local_folder_path, p.notes
+                    r.code, r.factor, r.rounding_mode, p.local_folder_path,
+                    p.notes
              FROM proposals p
              LEFT JOIN layouts l ON l.id = p.layout_id
              LEFT JOIN pricing_rules r ON r.id = p.pricing_rule_id
@@ -346,8 +347,11 @@ fn map_proposal_detail(row: &rusqlite::Row<'_>) -> Result<ProposalDetail> {
         layout_name: row.get(16)?,
         pricing_rule_id: row.get(17)?,
         pricing_rule_name: row.get(18)?,
-        local_folder_path: row.get(19)?,
-        notes: row.get(20)?,
+        pricing_rule_code: row.get(19)?,
+        pricing_rule_factor: row.get(20)?,
+        pricing_rule_rounding_mode: row.get(21)?,
+        local_folder_path: row.get(22)?,
+        notes: row.get(23)?,
         items: vec![],
     })
 }

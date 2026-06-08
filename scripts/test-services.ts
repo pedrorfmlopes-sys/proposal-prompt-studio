@@ -19,7 +19,8 @@ import {
   calculateProposalTotal,
   validateCreateProposalInput,
 } from "../src/services/proposalService";
-import type { AppSetting, PricingRule } from "../src/types";
+import { generateStructuredPrompt } from "../src/services/promptGenerationService";
+import type { AppSetting, PricingRule, ProposalDetail } from "../src/types";
 
 function assertMoney(actual: number, expected: number) {
   assert.equal(actual.toFixed(2), expected.toFixed(2));
@@ -263,6 +264,66 @@ assert.throws(
     }),
   /Language is required/,
 );
+
+const promptProposal: ProposalDetail = {
+  id: 1,
+  proposalNumber: "PROP-2026-001",
+  title: "Hotelaria Lisboa - Projeto Hotelaria Lisboa",
+  clientNameSnapshot: "Hotelaria Lisboa",
+  projectName: "Projeto Hotelaria Lisboa",
+  projectLocation: "Lisboa",
+  proposalDate: "2026-06-08",
+  status: "draft",
+  totalAmount: 13545.4,
+  language: "pt-PT",
+  currency: "EUR",
+  vatMode: "sem_iva",
+  validityText: "30 dias",
+  commercialConditions: "Aos valores apresentados acresce IVA a taxa legal em vigor.",
+  proposalType: "technical",
+  layoutId: 1,
+  layoutName: "Technical summary with tables",
+  pricingRuleId: divideRule.id,
+  pricingRuleName: divideRule.name,
+  pricingRuleCode: divideRule.code,
+  pricingRuleFactor: divideRule.factor,
+  pricingRuleRoundingMode: divideRule.roundingMode,
+  localFolderPath: "C:/ProposalPromptStudio/proposals/2026/PROP-2026-001",
+  notes: "Notas de teste",
+  items: [
+    {
+      id: 1,
+      proposalId: 1,
+      brandId: 1,
+      brandNameSnapshot: "FIMA Carlo Frattini",
+      optionGroup: "",
+      reference: "F3121WLX8CR",
+      description: "Misturadora",
+      finish: "Cromado",
+      quantity: 220,
+      originalUnitPrice: 52.33,
+      calculationRuleId: divideRule.id,
+      calculationFactor: 0.85,
+      finalUnitPrice: 61.57,
+      lineTotal: 13545.4,
+      notes: "",
+      sortOrder: 1,
+    },
+  ],
+};
+const prompt = generateStructuredPrompt(promptProposal);
+assert.match(prompt, /PROP-2026-001/);
+assert.match(prompt, /Hotelaria Lisboa/);
+assert.match(prompt, /Projeto Hotelaria Lisboa/);
+assert.match(prompt, /Aos valores apresentados acresce IVA/);
+assert.match(prompt, /F3121WLX8CR/);
+assert.match(prompt, /52\.33/);
+assert.match(prompt, /61\.57/);
+assert.match(prompt, /13545\.40/);
+assert.match(prompt, /line_total = final_unit_price × quantity/);
+assert.match(prompt, /Não inventar produtos, links, imagens/);
+assert.match(prompt, /ceil_2_decimals/);
+assert.match(prompt, /divisão por 0,85/);
 
 console.log("Service tests passed.");
 

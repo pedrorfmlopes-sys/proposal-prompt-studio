@@ -7,6 +7,7 @@ import type {
 } from "../types";
 import { buildProposalFolderPath } from "./folderService";
 import { calculateSubtotal, validateLineTotal } from "./lineTotalService";
+import { previewPricingRules } from "./previewData";
 import { callTauri, isTauriRuntime } from "./tauriClient";
 
 const STORAGE_KEY = "proposal-prompt-studio.preview.proposals";
@@ -34,6 +35,9 @@ export function createProposal(input: CreateProposalInput): Promise<ProposalDeta
 
   const proposals = readPreviewProposals();
   const id = nextPreviewId(proposals);
+  const pricingRule = previewPricingRules.find(
+    (rule) => rule.id === input.pricingRuleId,
+  );
   const localFolderPath = buildProposalFolderPath({
     basePath: input.localWorkspacePath,
     year: new Date(input.proposalDate).getFullYear(),
@@ -61,7 +65,10 @@ export function createProposal(input: CreateProposalInput): Promise<ProposalDeta
     layoutId: input.layoutId ?? null,
     layoutName: null,
     pricingRuleId: input.pricingRuleId ?? null,
-    pricingRuleName: null,
+    pricingRuleName: pricingRule?.name ?? null,
+    pricingRuleCode: pricingRule?.code ?? null,
+    pricingRuleFactor: pricingRule?.factor ?? null,
+    pricingRuleRoundingMode: pricingRule?.roundingMode ?? null,
     localFolderPath,
     notes: input.notes ?? null,
     items: input.items.map(toPreviewItem),

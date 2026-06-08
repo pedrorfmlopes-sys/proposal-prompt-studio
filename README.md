@@ -89,6 +89,19 @@ In `Nova proposta`, fill the proposal metadata, choose a layout and commercial
 rule, add manual items, review totals, and save. In desktop mode, the proposal
 is stored in SQLite and the local proposal folder structure is created.
 
+## Generate A Structured Prompt
+
+Open a saved proposal from `Propostas guardadas` and use the `Prompts geradas`
+section in the detail view.
+
+- `Gerar prompt` creates a structured Markdown prompt.
+- `Ver ultima prompt` loads the latest prompt for that proposal.
+- `Copiar prompt` copies the visible prompt to the clipboard.
+
+In desktop/Tauri mode, prompts are saved in SQLite through `prompt_runs` and the
+existing trigger updates draft proposals to `prompt_generated`. In web/Vite
+preview mode, prompts are stored in `localStorage`.
+
 ## Create The Local Database
 
 If `sqlite3` is installed, run:
