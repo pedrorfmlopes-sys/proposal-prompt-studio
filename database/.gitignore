@@ -1,0 +1,4 @@
+app.sqlite
+app.sqlite-*
+*.db
+*.db-*
