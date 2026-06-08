@@ -27,7 +27,7 @@ pub fn create_proposal_folder_structure(
     Ok(created)
 }
 
-fn build_proposal_folder_path(input: &ProposalFolderRequest) -> PathBuf {
+pub fn build_proposal_folder_path(input: &ProposalFolderRequest) -> PathBuf {
     let folder_name = format!(
         "{}_{}_{}",
         input.proposal_number,

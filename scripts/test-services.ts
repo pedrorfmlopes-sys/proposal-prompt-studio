@@ -10,6 +10,16 @@ import {
   buildProposalSubfolderPaths,
   sanitizeFolderName,
 } from "../src/services/folderService";
+import {
+  calculateProposalItem,
+  toCreateProposalItemInput,
+} from "../src/services/proposalItemService";
+import { suggestNextProposalNumber } from "../src/services/proposalNumberService";
+import {
+  calculateProposalTotal,
+  validateCreateProposalInput,
+} from "../src/services/proposalService";
+import type { AppSetting, PricingRule } from "../src/types";
 
 function assertMoney(actual: number, expected: number) {
   assert.equal(actual.toFixed(2), expected.toFixed(2));
@@ -132,4 +142,91 @@ assert.equal(
   5,
 );
 
+const settingsBase: AppSetting[] = [
+  setting("proposal_series_prefix", "PROP"),
+  setting("proposal_series_year", "2026"),
+  setting("proposal_next_number", "1"),
+];
+assert.equal(suggestNextProposalNumber(settingsBase), "PROP-2026-001");
+assert.equal(
+  suggestNextProposalNumber([
+    setting("proposal_series_prefix", "PROP"),
+    setting("proposal_series_year", "2026"),
+    setting("proposal_next_number", "12"),
+  ]),
+  "PROP-2026-012",
+);
+
+const divideRule: PricingRule = {
+  id: 3,
+  name: "Divide by 0.85",
+  code: "divide_by_0_85",
+  type: "divide",
+  factor: 0.85,
+  roundingMode: "ceil_2_decimals",
+  description: null,
+  exampleInput: null,
+  exampleOutput: null,
+  formulaText: null,
+  isActive: true,
+  createdAt: "",
+  updatedAt: "",
+};
+
+const workflowItem = calculateProposalItem(
+  {
+    brandId: 1,
+    brandNameSnapshot: "FIMA Carlo Frattini",
+    optionGroup: "",
+    reference: "F3121WLX8CR",
+    description: "Misturadora",
+    finish: "Cromado",
+    quantity: 220,
+    originalUnitPrice: 52.33,
+    pricingRuleId: divideRule.id,
+    pricingRuleCode: divideRule.code,
+    pricingRuleName: divideRule.name,
+    calculationFactor: divideRule.factor,
+    notes: "",
+  },
+  divideRule,
+);
+assertMoney(workflowItem.finalUnitPrice, 61.57);
+assertMoney(workflowItem.lineTotal, 13545.4);
+
+const createItem = toCreateProposalItemInput(workflowItem, 1);
+assertMoney(calculateProposalTotal([createItem, { ...createItem, lineTotal: 10 }]), 13555.4);
+assert.throws(
+  () => toCreateProposalItemInput({ ...workflowItem, lineTotal: 1 }, 1),
+  /Line total does not match/,
+);
+assert.throws(
+  () =>
+    validateCreateProposalInput({
+      proposalNumber: "PROP-2026-001",
+      title: "Teste",
+      clientNameSnapshot: "Cliente",
+      projectName: "Projeto",
+      proposalDate: "2026-06-08",
+      language: "pt-PT",
+      currency: "EUR",
+      vatMode: "sem_iva",
+      localWorkspacePath: "C:/ProposalPromptStudio",
+      totalAmount: 1,
+      items: [createItem],
+    }),
+  /Proposal total must match/,
+);
+
 console.log("Service tests passed.");
+
+function setting(key: string, value: string): AppSetting {
+  return {
+    id: 1,
+    key,
+    value,
+    description: null,
+    createdAt: "",
+    updatedAt: "",
+  };
+}

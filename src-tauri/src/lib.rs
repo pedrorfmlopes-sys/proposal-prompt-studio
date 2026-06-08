@@ -2,6 +2,7 @@ mod commands;
 mod db;
 mod folder_service;
 mod models;
+mod proposal_commands;
 
 pub fn run() {
     tauri::Builder::default()
@@ -15,6 +16,12 @@ pub fn run() {
             commands::get_active_pricing_rules,
             commands::get_pricing_rule_by_code,
             commands::create_proposal_folder_structure,
+            proposal_commands::create_proposal,
+            proposal_commands::get_proposals,
+            proposal_commands::get_proposal_by_id,
+            proposal_commands::add_proposal_item,
+            proposal_commands::get_proposal_items,
+            proposal_commands::update_proposal_total,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Proposal Prompt Studio");

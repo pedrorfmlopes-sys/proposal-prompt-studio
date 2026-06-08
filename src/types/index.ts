@@ -76,6 +76,66 @@ export interface Proposal {
   totalAmount: number;
 }
 
+export type ProposalStatus =
+  | "draft"
+  | "prompt_generated"
+  | "sent_to_chatgpt"
+  | "final_uploaded"
+  | "archived";
+
+export type ProposalType = "technical" | "update" | "alternatives" | string;
+
+export type VatMode = "sem_iva" | "com_iva" | string;
+
+export interface ProposalSummary {
+  id: number;
+  proposalNumber: string;
+  title: string;
+  clientNameSnapshot: string | null;
+  projectName: string | null;
+  proposalDate: string;
+  status: ProposalStatus;
+  totalAmount: number;
+}
+
+export interface ProposalDetail extends ProposalSummary {
+  projectLocation: string | null;
+  language: string;
+  currency: string;
+  vatMode: VatMode;
+  validityText: string | null;
+  commercialConditions: string | null;
+  proposalType: ProposalType | null;
+  layoutId: number | null;
+  layoutName: string | null;
+  pricingRuleId: number | null;
+  pricingRuleName: string | null;
+  localFolderPath: string | null;
+  notes: string | null;
+  items: ProposalItem[];
+}
+
+export interface CreateProposalInput {
+  proposalNumber?: string;
+  title: string;
+  clientNameSnapshot: string;
+  projectName: string;
+  projectLocation?: string;
+  proposalDate: string;
+  language: string;
+  currency: string;
+  vatMode: VatMode;
+  validityText?: string;
+  commercialConditions?: string;
+  proposalType?: ProposalType;
+  layoutId?: number | null;
+  pricingRuleId?: number | null;
+  localWorkspacePath: string;
+  totalAmount: number;
+  notes?: string;
+  items: CreateProposalItemInput[];
+}
+
 export interface ProposalFile {
   id: number;
   proposalId: number;
@@ -91,13 +151,40 @@ export interface ProposalItem {
   id: number;
   proposalId: number;
   brandId: number | null;
+  brandNameSnapshot?: string | null;
+  optionGroup?: string | null;
   reference: string;
   description: string | null;
   finish: string | null;
   quantity: number;
   originalUnitPrice: number | null;
+  calculationRuleId?: number | null;
+  calculationFactor?: number | null;
   finalUnitPrice: number;
   lineTotal: number;
+  notes?: string | null;
+  sortOrder?: number;
+}
+
+export interface CreateProposalItemInput {
+  brandId?: number | null;
+  brandNameSnapshot?: string | null;
+  optionGroup?: string;
+  reference: string;
+  description?: string;
+  finish?: string;
+  quantity: number;
+  originalUnitPrice: number;
+  calculationRuleId?: number | null;
+  calculationFactor?: number | null;
+  finalUnitPrice: number;
+  lineTotal: number;
+  technicalSheetUrl?: string;
+  drawing2dUrl?: string;
+  model3dUrl?: string;
+  imagePath?: string;
+  notes?: string;
+  sortOrder: number;
 }
 
 export interface PromptRun {

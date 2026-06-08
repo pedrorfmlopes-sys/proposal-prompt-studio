@@ -50,7 +50,8 @@ npm run test:services
 ```
 
 This validates the required price calculations, line total validation, subtotal
-calculation, and proposal folder path helpers.
+calculation, proposal numbering, proposal input validation, item calculation,
+and proposal folder path helpers.
 
 ## Rounding Modes
 
@@ -66,11 +67,27 @@ For the web dashboard shell:
 npm run dev
 ```
 
+The web mode uses preview/fallback data when Tauri is not available. It can be
+used to inspect the workflow UI, but real SQLite writes and local folder
+creation are handled by the Tauri runtime.
+
 For the desktop Tauri app, after installing Rust:
 
 ```powershell
 npm run tauri:dev
 ```
+
+## Proposal Workflow
+
+Use the app navigation to move between:
+
+- `Dashboard`
+- `Nova proposta`
+- `Propostas guardadas`
+
+In `Nova proposta`, fill the proposal metadata, choose a layout and commercial
+rule, add manual items, review totals, and save. In desktop mode, the proposal
+is stored in SQLite and the local proposal folder structure is created.
 
 ## Create The Local Database
 
