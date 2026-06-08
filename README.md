@@ -15,6 +15,23 @@ time, because sync conflicts can corrupt or fork the working state.
 - `database/.gitignore` keeps generated SQLite runtime files out of Git.
 - `scripts/validate-sqlite.py` validates the schema, seed data, and critical
   line total trigger.
+- `src/` contains the React + TypeScript dashboard and service layer.
+- `src-tauri/` contains the Tauri desktop shell and SQLite command layer.
+
+## Install Dependencies
+
+```powershell
+npm install
+```
+
+If npm reports certificate errors on this Windows environment, run the install
+with strict SSL disabled only for that command:
+
+```powershell
+$env:npm_config_strict_ssl='false'; npm install
+```
+
+The Tauri desktop command also requires Rust to be installed locally.
 
 ## Validate SQLite
 
@@ -25,6 +42,29 @@ python scripts/validate-sqlite.py
 ```
 
 The validation script uses only Python standard library modules.
+
+## Test Services
+
+```powershell
+npm run test:services
+```
+
+This validates the required price calculations, line total validation, subtotal
+calculation, and proposal folder path helpers.
+
+## Run In Development
+
+For the web dashboard shell:
+
+```powershell
+npm run dev
+```
+
+For the desktop Tauri app, after installing Rust:
+
+```powershell
+npm run tauri:dev
+```
 
 ## Create The Local Database
 

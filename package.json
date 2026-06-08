@@ -1,0 +1,28 @@
+{
+  "name": "proposal-prompt-studio",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "tauri:dev": "tauri dev",
+    "build": "tsc && vite build",
+    "test:services": "tsx scripts/test-services.ts",
+    "validate:sqlite": "python scripts/validate-sqlite.py"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2.8.0",
+    "react": "^19.2.1",
+    "react-dom": "^19.2.1"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.8.4",
+    "@types/node": "^25.9.2",
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.1.1",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3",
+    "vite": "^7.2.6"
+  }
+}
