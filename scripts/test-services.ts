@@ -20,6 +20,17 @@ assertMoney(
     originalPrice: 52.33,
     ruleType: "divide",
     factor: 0.85,
+    roundingMode: "2_decimals",
+  }).finalUnitPrice,
+  61.56,
+);
+
+assertMoney(
+  calculateFinalUnitPrice({
+    originalPrice: 52.33,
+    ruleType: "divide",
+    factor: 0.85,
+    roundingMode: "ceil_2_decimals",
   }).finalUnitPrice,
   61.57,
 );
@@ -29,6 +40,7 @@ assertMoney(
     originalPrice: 100,
     ruleType: "multiply",
     factor: 1.15,
+    roundingMode: "2_decimals",
   }).finalUnitPrice,
   115.0,
 );
@@ -38,6 +50,17 @@ assertMoney(
     originalPrice: 100,
     ruleType: "divide",
     factor: 0.85,
+    roundingMode: "2_decimals",
+  }).finalUnitPrice,
+  117.65,
+);
+
+assertMoney(
+  calculateFinalUnitPrice({
+    originalPrice: 100,
+    ruleType: "divide",
+    factor: 0.85,
+    roundingMode: "ceil_2_decimals",
   }).finalUnitPrice,
   117.65,
 );
@@ -47,8 +70,39 @@ assertMoney(
     originalPrice: 100,
     ruleType: "discount",
     factor: 0.9,
+    roundingMode: "2_decimals",
   }).finalUnitPrice,
   90.0,
+);
+
+assert.throws(
+  () =>
+    calculateFinalUnitPrice({
+      originalPrice: 100,
+      ruleType: "divide",
+      factor: 0,
+    }),
+  /requires a non-zero factor/,
+);
+
+assert.throws(
+  () =>
+    calculateFinalUnitPrice({
+      originalPrice: 100,
+      ruleType: "multiply",
+      factor: null,
+    }),
+  /requires a non-zero factor/,
+);
+
+assert.throws(
+  () =>
+    calculateFinalUnitPrice({
+      originalPrice: 100,
+      ruleType: "keep_price",
+      roundingMode: "unknown" as never,
+    }),
+  /Unsupported rounding mode/,
 );
 
 assertMoney(calculateLineTotal(61.57, 220), 13545.4);

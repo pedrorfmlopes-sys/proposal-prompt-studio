@@ -168,11 +168,11 @@ INSERT INTO pricing_rules (
     'divide_by_0_85',
     'divide',
     0.85,
-    '2_decimals',
-    'Divide the original price by 0.85.',
+    'ceil_2_decimals',
+    'Divide the original price by 0.85 and round up to the next cent.',
     '52.33',
     '61.57',
-    'final price = original price / 0.85',
+    'final price = ceil to cent(original price / 0.85)',
     1
   ),
   (

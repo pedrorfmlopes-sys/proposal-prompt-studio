@@ -52,8 +52,7 @@ calculation, validation, and folder path services.
   exist yet.
 - Kept calculation and validation rules in pure TypeScript so they can be
   tested without launching the desktop shell.
-- Division-based commercial rules round up to the next cent in order to satisfy
-  the required business example `52.33 / 0.85 = 61.57`.
+- Commercial rounding is explicit through the `ceil_2_decimals` rounding mode.
 - Generated build output and local database/runtime files are ignored by Git.
 
 ## App Folder Structure
@@ -142,3 +141,45 @@ npm run build
 Fase 003 should add the first proposal creation workflow: create a proposal
 record, choose client/layout/pricing rule, add proposal items, validate totals,
 and create the local proposal folder structure.
+
+## Fase 002C - Commercial rounding correction
+
+### Problem Found
+
+The original Fase 002 calculation service hid commercial rounding inside
+division-based rules. With `roundingMode: "2_decimals"`, `divide` and
+`margin_division` rounded up to the next cent, so `52.33 / 0.85` returned
+`61.57` instead of the normal 2-decimal result `61.56`.
+
+### Correction Applied
+
+- `2_decimals` now means normal rounding to 2 decimal places.
+- `ceil_2_decimals` now means commercial rounding up to the next cent.
+- `none` now means no rounding.
+- `divide` and `margin_division` only calculate the raw division; the rounding
+  mode decides how the final value is rounded.
+- The seeded `divide_by_0_85` rule now uses `ceil_2_decimals`, preserving
+  `52.33 / 0.85 = 61.57` explicitly.
+
+### Files Altered
+
+- `src/types/index.ts`
+- `src/services/priceCalculationService.ts`
+- `scripts/test-services.ts`
+- `src/ui/App.tsx`
+- `database/seed.sql`
+- `README.md`
+- `docs/HANDOFF_002_APP_STRUCTURE_SERVICES.md`
+
+### Tests Executed
+
+```powershell
+python scripts/validate-sqlite.py
+npm run test:services
+npm run build
+```
+
+### Final Decision
+
+Commercial rounding must always be represented by `ceil_2_decimals`. The
+standard `2_decimals` mode must never hide rounding up behavior.

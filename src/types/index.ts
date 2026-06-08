@@ -6,7 +6,7 @@ export type PricingRuleType =
   | "margin_division"
   | "custom";
 
-export type RoundingMode = "2_decimals" | string;
+export type RoundingMode = "2_decimals" | "ceil_2_decimals" | "none";
 
 export interface AppSetting {
   id: number;

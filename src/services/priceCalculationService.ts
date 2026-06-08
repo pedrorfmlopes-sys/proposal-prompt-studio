@@ -1,4 +1,8 @@
-import type { PriceCalculationInput, PriceCalculationResult } from "../types";
+import type {
+  PriceCalculationInput,
+  PriceCalculationResult,
+  RoundingMode,
+} from "../types";
 
 export function roundMoney(value: number): number {
   return Math.round((value + Number.EPSILON) * 100) / 100;
@@ -31,8 +35,7 @@ export function calculateFinalUnitPrice(
     case "margin_division":
       assertUsableFactor(factor, input.ruleType);
       rawValue = input.originalPrice / factor;
-      finalUnitPrice =
-        roundingMode === "2_decimals" ? roundMoneyUp(rawValue) : rawValue;
+      finalUnitPrice = roundByMode(rawValue, roundingMode);
       break;
     case "custom":
       rawValue = input.originalPrice;
@@ -51,8 +54,17 @@ export function calculateFinalUnitPrice(
   };
 }
 
-function roundByMode(value: number, roundingMode: string): number {
-  return roundingMode === "2_decimals" ? roundMoney(value) : value;
+function roundByMode(value: number, roundingMode: RoundingMode): number {
+  switch (roundingMode) {
+    case "2_decimals":
+      return roundMoney(value);
+    case "ceil_2_decimals":
+      return roundMoneyUp(value);
+    case "none":
+      return value;
+    default:
+      throw new Error(`Unsupported rounding mode: ${roundingMode satisfies never}`);
+  }
 }
 
 function assertUsableFactor(

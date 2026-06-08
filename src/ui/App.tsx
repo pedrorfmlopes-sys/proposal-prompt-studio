@@ -21,7 +21,7 @@ export function App() {
         originalPrice: 52.33,
         ruleType: "divide",
         factor: 0.85,
-        roundingMode: "2_decimals",
+        roundingMode: "ceil_2_decimals",
       }),
     [],
   );
@@ -74,7 +74,7 @@ export function App() {
         <section className="calculationPanel" aria-label="Teste de calculo">
           <h2>Teste de calculo</h2>
           <p>
-            52,33 EUR / 0,85 ={" "}
+            52,33 EUR / 0,85, com arredondamento comercial para cima ={" "}
             <strong>{calculation.finalUnitPrice.toFixed(2)} EUR</strong>
           </p>
         </section>

@@ -52,6 +52,12 @@ npm run test:services
 This validates the required price calculations, line total validation, subtotal
 calculation, and proposal folder path helpers.
 
+## Rounding Modes
+
+- `2_decimals`: normal rounding to 2 decimal places.
+- `ceil_2_decimals`: commercial rounding up to the next cent.
+- `none`: no rounding.
+
 ## Run In Development
 
 For the web dashboard shell:
