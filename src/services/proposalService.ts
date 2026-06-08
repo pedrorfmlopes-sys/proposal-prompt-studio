@@ -102,7 +102,14 @@ export function validateCreateProposalInput(input: CreateProposalInput): void {
   if (!input.clientNameSnapshot.trim()) throw new Error("Client name is required");
   if (!input.projectName.trim()) throw new Error("Project name is required");
   if (!input.proposalDate) throw new Error("Proposal date is required");
+  if (!input.language.trim()) throw new Error("Language is required");
+  if (!input.currency.trim()) throw new Error("Currency is required");
+  if (!input.vatMode.trim()) throw new Error("VAT mode is required");
+  if (!input.localWorkspacePath.trim()) {
+    throw new Error("Local workspace path is required");
+  }
   if (!input.items.length) throw new Error("At least one proposal item is required");
+  if (input.totalAmount < 0) throw new Error("Proposal total cannot be negative");
 
   for (const item of input.items) {
     validateProposalItemInput(item);
@@ -118,6 +125,8 @@ export function validateProposalItemInput(item: CreateProposalItemInput): void {
   if (!item.reference.trim()) throw new Error("Item reference is required");
   if (item.quantity <= 0) throw new Error("Item quantity must be greater than zero");
   if (item.originalUnitPrice < 0) throw new Error("Original unit price cannot be negative");
+  if (item.finalUnitPrice < 0) throw new Error("Final unit price cannot be negative");
+  if (item.lineTotal < 0) throw new Error("Line total cannot be negative");
 
   const validation = validateLineTotal(
     item.finalUnitPrice,

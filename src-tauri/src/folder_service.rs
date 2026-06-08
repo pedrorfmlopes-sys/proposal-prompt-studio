@@ -28,17 +28,32 @@ pub fn create_proposal_folder_structure(
 }
 
 pub fn build_proposal_folder_path(input: &ProposalFolderRequest) -> PathBuf {
+    let proposal_number = sanitize_folder_name_with_fallback(
+        &input.proposal_number,
+        "proposal",
+    );
+    let client_name = sanitize_folder_name_with_fallback(&input.client_name, "client");
+    let project_name = sanitize_folder_name_with_fallback(&input.project_name, "project");
     let folder_name = format!(
         "{}_{}_{}",
-        input.proposal_number,
-        sanitize_folder_name(&input.client_name),
-        sanitize_folder_name(&input.project_name)
+        proposal_number,
+        client_name,
+        project_name
     );
 
     PathBuf::from(&input.base_path)
         .join("proposals")
         .join(&input.year)
         .join(folder_name)
+}
+
+fn sanitize_folder_name_with_fallback(value: &str, fallback: &str) -> String {
+    let sanitized = sanitize_folder_name(value);
+    if sanitized.is_empty() {
+        fallback.to_string()
+    } else {
+        sanitized
+    }
 }
 
 fn sanitize_folder_name(value: &str) -> String {

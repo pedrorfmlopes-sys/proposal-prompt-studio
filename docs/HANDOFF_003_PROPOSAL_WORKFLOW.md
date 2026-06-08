@@ -107,3 +107,74 @@ The service tests cover:
 Fase 004 should generate and store the first structured prompt from a saved
 proposal, using the selected layout, commercial conditions, items, totals, and
 associated metadata.
+
+## Fase 003B - Proposal workflow hardening
+
+### Problem Found
+
+Review found two robustness risks in the initial proposal workflow:
+
+- `create_proposal` committed SQLite changes before trying to create the local
+  proposal folder, which could leave a saved proposal without its folder
+  structure.
+- Backend validation relied too much on SQLite constraints and did not return
+  clear errors for all invalid proposal/item values.
+
+### Correction Applied
+
+- Adopted Option A: `create_proposal` now validates input, opens the SQLite
+  transaction, resolves the proposal number and local folder path, creates the
+  folder structure, and only then inserts/commits the proposal and items.
+- Folder creation still uses `create_dir_all`, so it remains idempotent and
+  does not delete existing folders.
+- Folder names now use safe fallbacks when the proposal number, client name, or
+  project name sanitizes to an empty value.
+- Frontend/service validation was aligned with backend validation for negative
+  prices, negative totals, required metadata, and line-total mismatches.
+
+### Decision On Folder Creation vs SQLite Commit
+
+The chosen approach is to create the folder before inserting and committing the
+proposal. If folder creation fails, the command returns an error before any
+proposal rows are committed. This avoids the known inconsistent state:
+
+```text
+proposal saved in SQLite
+folder not created
+```
+
+### Reinforced Validations
+
+Backend `validate_proposal_input` now checks:
+
+- title, client, project, proposal date, language, currency, VAT mode, and local
+  workspace path are required;
+- items cannot be empty;
+- proposal total cannot be negative;
+- proposal total must match the subtotal within `0.01`.
+
+Backend `validate_item_input` now checks:
+
+- reference is required;
+- quantity must be greater than zero;
+- original unit price, final unit price, and line total cannot be negative;
+- line total must match `round(final_unit_price * quantity, 2)` within `0.01`.
+
+### Tests Executed
+
+```powershell
+python scripts/validate-sqlite.py
+npm run test:services
+npm run build
+```
+
+Service tests include negative original price, negative final price, negative
+line total, negative proposal total, missing language, proposal total mismatch,
+and invalid line total cases.
+
+### Limitations
+
+Rust is still not installed in the current environment, so the Rust/Tauri
+commands were not compiled or executed locally. The hardening is covered by
+TypeScript service tests and the frontend build; Rust validation should be
+compiled once Rust is available.

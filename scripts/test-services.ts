@@ -217,6 +217,52 @@ assert.throws(
     }),
   /Proposal total must match/,
 );
+assert.throws(
+  () => validateProposalLike({ ...createItem, originalUnitPrice: -1 }),
+  /Original unit price cannot be negative/,
+);
+assert.throws(
+  () => validateProposalLike({ ...createItem, finalUnitPrice: -1 }),
+  /Final unit price cannot be negative/,
+);
+assert.throws(
+  () => validateProposalLike({ ...createItem, lineTotal: -1 }),
+  /Line total cannot be negative/,
+);
+assert.throws(
+  () =>
+    validateCreateProposalInput({
+      proposalNumber: "PROP-2026-001",
+      title: "Teste",
+      clientNameSnapshot: "Cliente",
+      projectName: "Projeto",
+      proposalDate: "2026-06-08",
+      language: "pt-PT",
+      currency: "EUR",
+      vatMode: "sem_iva",
+      localWorkspacePath: "C:/ProposalPromptStudio",
+      totalAmount: -1,
+      items: [createItem],
+    }),
+  /Proposal total cannot be negative/,
+);
+assert.throws(
+  () =>
+    validateCreateProposalInput({
+      proposalNumber: "PROP-2026-001",
+      title: "Teste",
+      clientNameSnapshot: "Cliente",
+      projectName: "Projeto",
+      proposalDate: "2026-06-08",
+      language: "",
+      currency: "EUR",
+      vatMode: "sem_iva",
+      localWorkspacePath: "C:/ProposalPromptStudio",
+      totalAmount: createItem.lineTotal,
+      items: [createItem],
+    }),
+  /Language is required/,
+);
 
 console.log("Service tests passed.");
 
@@ -229,4 +275,20 @@ function setting(key: string, value: string): AppSetting {
     createdAt: "",
     updatedAt: "",
   };
+}
+
+function validateProposalLike(item: typeof createItem): void {
+  validateCreateProposalInput({
+    proposalNumber: "PROP-2026-001",
+    title: "Teste",
+    clientNameSnapshot: "Cliente",
+    projectName: "Projeto",
+    proposalDate: "2026-06-08",
+    language: "pt-PT",
+    currency: "EUR",
+    vatMode: "sem_iva",
+    localWorkspacePath: "C:/ProposalPromptStudio",
+    totalAmount: Math.max(item.lineTotal, 0),
+    items: [item],
+  });
 }

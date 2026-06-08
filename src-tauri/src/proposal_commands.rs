@@ -28,6 +28,7 @@ pub fn create_proposal(app: AppHandle, input: CreateProposalInput) -> Result<Pro
     let local_folder_path = folder_service::build_proposal_folder_path(&folder_request)
         .to_string_lossy()
         .to_string();
+    folder_service::create_proposal_folder_structure(folder_request)?;
 
     tx.execute(
         "INSERT INTO proposals (
@@ -67,7 +68,6 @@ pub fn create_proposal(app: AppHandle, input: CreateProposalInput) -> Result<Pro
     increment_next_number(&tx).map_err(|error| error.to_string())?;
     tx.commit().map_err(|error| error.to_string())?;
 
-    folder_service::create_proposal_folder_structure(folder_request)?;
     get_proposal_by_id(app, proposal_id)?.ok_or_else(|| "Created proposal not found".to_string())
 }
 
@@ -258,8 +258,26 @@ fn validate_proposal_input(input: &CreateProposalInput) -> Result<(), String> {
     if input.project_name.trim().is_empty() {
         return Err("Project name is required".to_string());
     }
+    if input.proposal_date.trim().is_empty() {
+        return Err("Proposal date is required".to_string());
+    }
+    if input.language.trim().is_empty() {
+        return Err("Language is required".to_string());
+    }
+    if input.currency.trim().is_empty() {
+        return Err("Currency is required".to_string());
+    }
+    if input.vat_mode.trim().is_empty() {
+        return Err("VAT mode is required".to_string());
+    }
+    if input.local_workspace_path.trim().is_empty() {
+        return Err("Local workspace path is required".to_string());
+    }
     if input.items.is_empty() {
         return Err("At least one proposal item is required".to_string());
+    }
+    if input.total_amount < 0.0 {
+        return Err("Proposal total cannot be negative".to_string());
     }
     for item in &input.items {
         validate_item_input(item)?;
@@ -277,6 +295,15 @@ fn validate_item_input(item: &CreateProposalItemInput) -> Result<(), String> {
     }
     if item.quantity <= 0.0 {
         return Err("Item quantity must be greater than zero".to_string());
+    }
+    if item.original_unit_price < 0.0 {
+        return Err("Original unit price cannot be negative".to_string());
+    }
+    if item.final_unit_price < 0.0 {
+        return Err("Final unit price cannot be negative".to_string());
+    }
+    if item.line_total < 0.0 {
+        return Err("Line total cannot be negative".to_string());
     }
     let expected = (item.final_unit_price * item.quantity * 100.0).round() / 100.0;
     if (expected - item.line_total).abs() > 0.01 {
