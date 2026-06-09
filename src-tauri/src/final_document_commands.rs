@@ -123,6 +123,59 @@ pub fn get_latest_final_document(
 }
 
 #[tauri::command]
+pub fn update_final_document_version(
+    app: AppHandle,
+    document_id: i64,
+    version_label: Option<String>,
+) -> Result<FinalDocument, String> {
+    if document_id <= 0 {
+        return Err("document_id must be greater than zero".to_string());
+    }
+
+    let conn = db::open_initialized(&app)?;
+    query_final_document_by_id(&conn, document_id)
+        .optional()
+        .map_err(|error| error.to_string())?
+        .ok_or_else(|| "Final document not found".to_string())?;
+
+    let cleaned_version_label = version_label.and_then(|value| {
+        let trimmed = value.trim().to_string();
+        if trimmed.is_empty() {
+            None
+        } else {
+            Some(trimmed)
+        }
+    });
+
+    conn.execute(
+        "UPDATE final_documents SET version_label = ?1 WHERE id = ?2",
+        params![cleaned_version_label, document_id],
+    )
+    .map_err(|error| error.to_string())?;
+
+    query_final_document_by_id(&conn, document_id).map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+pub fn remove_final_document_record(app: AppHandle, document_id: i64) -> Result<(), String> {
+    if document_id <= 0 {
+        return Err("document_id must be greater than zero".to_string());
+    }
+
+    let conn = db::open_initialized(&app)?;
+    query_final_document_by_id(&conn, document_id)
+        .optional()
+        .map_err(|error| error.to_string())?
+        .ok_or_else(|| "Final document not found".to_string())?;
+    conn.execute(
+        "DELETE FROM final_documents WHERE id = ?1",
+        params![document_id],
+    )
+    .map_err(|error| error.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
 pub fn ensure_final_documents_folder(local_folder_path: String) -> Result<String, String> {
     if local_folder_path.trim().is_empty() {
         return Err("A proposta nao tem pasta local definida.".to_string());

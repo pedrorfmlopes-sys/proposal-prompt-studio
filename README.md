@@ -165,6 +165,14 @@ These actions use Tauri plugins and are only available in the desktop runtime.
 Web/Vite mode remains preview-only and does not try to open real files or
 folders.
 
+## Final Document Management
+
+Registered final documents can have their version label edited from the
+proposal detail view. A document record can also be removed from the app.
+
+Removing a record does not delete the physical file from disk. Physical file
+deletion is intentionally left for a future phase, if it is ever needed.
+
 ## Create The Local Database
 
 If `sqlite3` is installed, run:

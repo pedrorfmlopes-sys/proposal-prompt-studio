@@ -32,8 +32,10 @@ import {
   getFinalDocumentExtension,
   getFinalDocuments,
   isAllowedFinalDocumentExtension,
+  removeFinalDocumentRecord,
   registerFinalDocument,
   sanitizeFinalDocumentFileName,
+  updateFinalDocumentVersion,
   validateRegisterFinalDocumentInput,
 } from "../src/services/finalDocumentService";
 import {
@@ -495,6 +497,29 @@ assert.match(fallbackFinalDocument.localPath ?? "", /apenas preview/);
 const fallbackDocuments = await getFinalDocuments(12);
 assert.equal(fallbackDocuments.length, 1);
 assert.equal(fallbackDocuments[0].fileType, "docx");
+const updatedFinalDocument = await updateFinalDocumentVersion(
+  fallbackFinalDocument.id,
+  "v2 revista",
+);
+assert.equal(updatedFinalDocument.versionLabel, "v2 revista");
+const clearedFinalDocument = await updateFinalDocumentVersion(
+  fallbackFinalDocument.id,
+  "   ",
+);
+assert.equal(clearedFinalDocument.versionLabel, null);
+const localPathBeforeRemoval = clearedFinalDocument.localPath;
+await removeFinalDocumentRecord(fallbackFinalDocument.id);
+const finalDocumentsAfterRemoval = await getFinalDocuments(12);
+assert.equal(finalDocumentsAfterRemoval.length, 0);
+assert.match(localPathBeforeRemoval ?? "", /apenas preview/);
+assert.throws(
+  () => updateFinalDocumentVersion(0, "v1"),
+  /Document id must be greater than zero/,
+);
+assert.throws(
+  () => removeFinalDocumentRecord(0),
+  /Document id must be greater than zero/,
+);
 assert.throws(() => validatePath(""), /Indica um caminho valido/);
 await assert.rejects(
   () => openPath("C:/Temp/Proposta_Final.pdf"),

@@ -65,6 +65,41 @@ export function getLatestFinalDocument(
   return getFinalDocuments(proposalId).then((documents) => documents[0] ?? null);
 }
 
+export function updateFinalDocumentVersion(
+  documentId: number,
+  versionLabel: string,
+): Promise<FinalDocument> {
+  validateDocumentId(documentId);
+
+  if (isTauriRuntime()) {
+    return callTauri<FinalDocument>("update_final_document_version", {
+      documentId,
+      versionLabel,
+    });
+  }
+
+  const documents = readPreviewFinalDocuments();
+  const document = documents.find((item) => item.id === documentId);
+  if (!document) throw new Error("Final document not found");
+  document.versionLabel = versionLabel.trim() || null;
+  writePreviewFinalDocuments(documents);
+  return Promise.resolve(document);
+}
+
+export function removeFinalDocumentRecord(documentId: number): Promise<void> {
+  validateDocumentId(documentId);
+
+  if (isTauriRuntime()) {
+    return callTauri<void>("remove_final_document_record", { documentId });
+  }
+
+  const documents = readPreviewFinalDocuments();
+  const document = documents.find((item) => item.id === documentId);
+  if (!document) throw new Error("Final document not found");
+  writePreviewFinalDocuments(documents.filter((item) => item.id !== documentId));
+  return Promise.resolve();
+}
+
 export function validateRegisterFinalDocumentInput(
   input: RegisterFinalDocumentInput,
 ): void {
@@ -132,6 +167,12 @@ export function buildFinalDocumentPreviewRecord(
 function validateProposalId(proposalId: number): void {
   if (proposalId <= 0) {
     throw new Error("Proposal id must be greater than zero.");
+  }
+}
+
+function validateDocumentId(documentId: number): void {
+  if (documentId <= 0) {
+    throw new Error("Document id must be greater than zero.");
   }
 }
 

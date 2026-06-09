@@ -36,6 +36,8 @@ pub fn run() {
             final_document_commands::register_final_document,
             final_document_commands::get_final_documents,
             final_document_commands::get_latest_final_document,
+            final_document_commands::update_final_document_version,
+            final_document_commands::remove_final_document_record,
             final_document_commands::ensure_final_documents_folder,
             final_document_commands::open_path,
         ])

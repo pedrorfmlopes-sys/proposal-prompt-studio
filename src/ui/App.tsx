@@ -25,7 +25,9 @@ import {
 import { exportPromptRun } from "../services/promptExportService";
 import {
   getFinalDocuments,
+  removeFinalDocumentRecord,
   registerFinalDocument,
+  updateFinalDocumentVersion,
 } from "../services/finalDocumentService";
 import {
   openFinalDocumentsFolder,
@@ -450,6 +452,7 @@ function ProposalDetailView({ proposal }: { proposal: ProposalDetail }) {
   const [finalDocuments, setFinalDocuments] = useState<FinalDocument[]>([]);
   const [finalDocumentPath, setFinalDocumentPath] = useState("");
   const [finalDocumentVersion, setFinalDocumentVersion] = useState("");
+  const [editingFinalDocumentId, setEditingFinalDocumentId] = useState<number | null>(null);
   const [message, setMessage] = useState("");
 
   const refreshPrompts = useCallback(() => {
@@ -552,6 +555,44 @@ function ProposalDetailView({ proposal }: { proposal: ProposalDetail }) {
       });
   }
 
+  function editFinalDocumentVersion(document: FinalDocument) {
+    setEditingFinalDocumentId(document.id);
+    setFinalDocumentVersion(document.versionLabel ?? "");
+    setMessage(`A editar etiqueta/versao de ${document.fileName}.`);
+  }
+
+  function saveFinalDocumentVersion() {
+    if (!editingFinalDocumentId) {
+      setMessage("Seleciona um documento final para editar a versao.");
+      return;
+    }
+    updateFinalDocumentVersion(editingFinalDocumentId, finalDocumentVersion)
+      .then(() => {
+        setMessage("Etiqueta/versao atualizada.");
+        setEditingFinalDocumentId(null);
+        setFinalDocumentVersion("");
+        refreshFinalDocuments();
+      })
+      .catch((error: unknown) => {
+        setMessage(error instanceof Error ? error.message : "Nao foi possivel atualizar a versao.");
+      });
+  }
+
+  function removeRegisteredFinalDocument(document: FinalDocument) {
+    removeFinalDocumentRecord(document.id)
+      .then(() => {
+        setMessage("Registo removido da app. O ficheiro fisico nao foi apagado.");
+        if (editingFinalDocumentId === document.id) {
+          setEditingFinalDocumentId(null);
+          setFinalDocumentVersion("");
+        }
+        refreshFinalDocuments();
+      })
+      .catch((error: unknown) => {
+        setMessage(error instanceof Error ? error.message : "Nao foi possivel remover o registo.");
+      });
+  }
+
   function registerVisibleFinalDocument() {
     registerFinalDocument({
       proposalId: proposal.id,
@@ -633,6 +674,7 @@ function ProposalDetailView({ proposal }: { proposal: ProposalDetail }) {
         <div className="actions">
           <button onClick={chooseFinalDocumentFile}>Escolher ficheiro</button>
           <button onClick={registerVisibleFinalDocument}>Registar documento final</button>
+          <button onClick={saveFinalDocumentVersion} disabled={!editingFinalDocumentId}>Guardar versao</button>
           <button onClick={openFinalDocumentsLocalFolder}>Abrir pasta final-documents</button>
         </div>
         {finalDocuments.length > 0 && (
@@ -646,7 +688,11 @@ function ProposalDetailView({ proposal }: { proposal: ProposalDetail }) {
                   <td>{document.versionLabel ?? "-"}</td>
                   <td>{document.localPath ?? "-"}</td>
                   <td>{document.onedrivePath ?? "-"}</td>
-                  <td><button onClick={() => openRegisteredFinalDocument(document)} disabled={!document.localPath}>Abrir</button></td>
+                  <td>
+                    <button onClick={() => openRegisteredFinalDocument(document)} disabled={!document.localPath}>Abrir</button>
+                    <button onClick={() => editFinalDocumentVersion(document)}>Editar versao</button>
+                    <button onClick={() => removeRegisteredFinalDocument(document)}>Remover registo</button>
+                  </td>
                 </tr>
               ))}
             </tbody>
