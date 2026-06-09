@@ -299,7 +299,8 @@ fn query_proposal_items(conn: &Connection, proposal_id: i64) -> Result<Vec<Propo
         "SELECT id, proposal_id, brand_id, brand_name_snapshot, option_group,
                 reference, description, finish, quantity, original_unit_price,
                 calculation_rule_id, calculation_factor, final_unit_price,
-                line_total, notes, sort_order
+                line_total, technical_sheet_url, drawing_2d_url, model_3d_url,
+                image_path, notes, sort_order
          FROM proposal_items
          WHERE proposal_id = ?1
          ORDER BY sort_order, id",
@@ -314,7 +315,8 @@ fn query_proposal_item(conn: &Connection, item_id: i64) -> Result<ProposalItem> 
         "SELECT id, proposal_id, brand_id, brand_name_snapshot, option_group,
                 reference, description, finish, quantity, original_unit_price,
                 calculation_rule_id, calculation_factor, final_unit_price,
-                line_total, notes, sort_order
+                line_total, technical_sheet_url, drawing_2d_url, model_3d_url,
+                image_path, notes, sort_order
          FROM proposal_items
          WHERE id = ?1",
         params![item_id],
@@ -349,10 +351,10 @@ fn proposal_item_to_create_input(item: &ProposalItem) -> CreateProposalItemInput
         calculation_factor: item.calculation_factor,
         final_unit_price: item.final_unit_price,
         line_total: item.line_total,
-        technical_sheet_url: None,
-        drawing2d_url: None,
-        model3d_url: None,
-        image_path: None,
+        technical_sheet_url: item.technical_sheet_url.clone(),
+        drawing2d_url: item.drawing2d_url.clone(),
+        model3d_url: item.model3d_url.clone(),
+        image_path: item.image_path.clone(),
         notes: item.notes.clone(),
         sort_order: item.sort_order,
     }
@@ -502,7 +504,11 @@ fn map_proposal_item(row: &rusqlite::Row<'_>) -> Result<ProposalItem> {
         calculation_factor: row.get(11)?,
         final_unit_price: row.get(12)?,
         line_total: row.get(13)?,
-        notes: row.get(14)?,
-        sort_order: row.get(15)?,
+        technical_sheet_url: row.get(14)?,
+        drawing2d_url: row.get(15)?,
+        model3d_url: row.get(16)?,
+        image_path: row.get(17)?,
+        notes: row.get(18)?,
+        sort_order: row.get(19)?,
     })
 }

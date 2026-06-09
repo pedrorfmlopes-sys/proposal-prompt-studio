@@ -165,6 +165,10 @@ export interface ProposalItem {
   calculationFactor?: number | null;
   finalUnitPrice: number;
   lineTotal: number;
+  technicalSheetUrl?: string | null;
+  drawing2dUrl?: string | null;
+  model3dUrl?: string | null;
+  imagePath?: string | null;
   notes?: string | null;
   sortOrder?: number;
 }

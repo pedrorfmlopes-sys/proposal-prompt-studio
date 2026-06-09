@@ -84,6 +84,20 @@ deep-cloned item objects, and invalid line failure.
 - No copying of physical files, prompts, exports, or final documents.
 - No editing workflow beyond what already exists.
 
+## Fase 009B - Preserve Technical Item Fields
+
+The duplicate flow now preserves item technical references stored in
+`proposal_items`: `technical_sheet_url`, `drawing_2d_url`, `model_3d_url`, and
+`image_path`.
+
+The fix keeps the schema unchanged. Rust now reads those columns into
+`ProposalItem`, maps them back into `CreateProposalItemInput` during
+duplication, and TypeScript preview tests assert that the copied item retains
+the same technical links/paths.
+
+Physical technical files are still not copied in this phase; only the stored
+references are preserved.
+
 ## Next Step
 
 Add editing of existing proposal/item details or an explicit revision workflow

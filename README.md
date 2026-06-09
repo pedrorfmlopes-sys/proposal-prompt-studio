@@ -181,6 +181,9 @@ proposal data and item lines, and creates a new local folder structure.
 
 Generated prompts, exported prompts, proposal files, and final document records
 are not copied. The duplicated proposal starts as a clean working version.
+Item technical references, such as technical sheets, 2D drawings, 3D models,
+and image paths, are preserved as stored links/paths; physical files are not
+copied.
 
 ## Create The Local Database
 

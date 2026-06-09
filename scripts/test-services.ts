@@ -330,6 +330,10 @@ const promptProposal: ProposalDetail = {
       calculationFactor: 0.85,
       finalUnitPrice: 61.57,
       lineTotal: 13545.4,
+      technicalSheetUrl: "https://example.com/technical-sheet.pdf",
+      drawing2dUrl: "https://example.com/drawing-2d.dwg",
+      model3dUrl: "https://example.com/model-3d.step",
+      imagePath: "C:/ProposalPromptStudio/assets/item-image.png",
       notes: "",
       sortOrder: 1,
     },
@@ -553,6 +557,13 @@ assert.deepEqual(
   promptProposal.items.map((item) => item.reference),
 );
 assert.notEqual(duplicatedPreviewProposal.items[0], promptProposal.items[0]);
+assert.equal(
+  duplicatedPreviewProposal.items[0].technicalSheetUrl,
+  promptProposal.items[0].technicalSheetUrl,
+);
+assert.equal(duplicatedPreviewProposal.items[0].drawing2dUrl, promptProposal.items[0].drawing2dUrl);
+assert.equal(duplicatedPreviewProposal.items[0].model3dUrl, promptProposal.items[0].model3dUrl);
+assert.equal(duplicatedPreviewProposal.items[0].imagePath, promptProposal.items[0].imagePath);
 assertMoney(duplicatedPreviewProposal.totalAmount, promptProposal.totalAmount);
 assert.match(duplicatedPreviewProposal.notes ?? "", /Duplicada a partir da proposta PROP-2026-001/);
 assert.equal(

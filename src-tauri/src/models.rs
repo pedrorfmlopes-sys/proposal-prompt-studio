@@ -187,6 +187,10 @@ pub struct ProposalItem {
     pub calculation_factor: Option<f64>,
     pub final_unit_price: f64,
     pub line_total: f64,
+    pub technical_sheet_url: Option<String>,
+    pub drawing2d_url: Option<String>,
+    pub model3d_url: Option<String>,
+    pub image_path: Option<String>,
     pub notes: Option<String>,
     pub sort_order: i64,
 }
