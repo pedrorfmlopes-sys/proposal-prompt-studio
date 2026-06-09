@@ -27,6 +27,12 @@ import {
   getFinalDocuments,
   registerFinalDocument,
 } from "../services/finalDocumentService";
+import {
+  openFinalDocumentsFolder,
+  openPath,
+  openProposalFolder,
+  pickFinalDocumentFile,
+} from "../services/fileDialogService";
 import { getAllSettings } from "../services/settingsService";
 import type {
   AppSetting,
@@ -499,6 +505,53 @@ function ProposalDetailView({ proposal }: { proposal: ProposalDetail }) {
       });
   }
 
+  function openProposalLocalFolder() {
+    openProposalFolder(proposal.localFolderPath)
+      .then(() => setMessage("Pasta da proposta aberta."))
+      .catch((error: unknown) => {
+        setMessage(error instanceof Error ? error.message : "Nao foi possivel abrir a pasta.");
+      });
+  }
+
+  function openVisiblePromptExport() {
+    if (!visiblePrompt?.exportedPath) return;
+    openPath(visiblePrompt.exportedPath)
+      .then(() => setMessage("Exportacao aberta."))
+      .catch((error: unknown) => {
+        setMessage(error instanceof Error ? error.message : "Nao foi possivel abrir a exportacao.");
+      });
+  }
+
+  function chooseFinalDocumentFile() {
+    pickFinalDocumentFile()
+      .then((path) => {
+        if (path) setFinalDocumentPath(path);
+      })
+      .catch((error: unknown) => {
+        setMessage(error instanceof Error ? error.message : "Nao foi possivel escolher o ficheiro.");
+      });
+  }
+
+  function openFinalDocumentsLocalFolder() {
+    openFinalDocumentsFolder(proposal.localFolderPath)
+      .then(() => setMessage("Pasta final-documents aberta."))
+      .catch((error: unknown) => {
+        setMessage(error instanceof Error ? error.message : "Nao foi possivel abrir a pasta final-documents.");
+      });
+  }
+
+  function openRegisteredFinalDocument(document: FinalDocument) {
+    if (!document.localPath) {
+      setMessage("O documento nao tem caminho local registado.");
+      return;
+    }
+    openPath(document.localPath)
+      .then(() => setMessage("Documento final aberto."))
+      .catch((error: unknown) => {
+        setMessage(error instanceof Error ? error.message : "O ficheiro ja nao existe no caminho registado.");
+      });
+  }
+
   function registerVisibleFinalDocument() {
     registerFinalDocument({
       proposalId: proposal.id,
@@ -528,6 +581,7 @@ function ProposalDetailView({ proposal }: { proposal: ProposalDetail }) {
       <p><strong>Layout:</strong> {proposal.layoutName ?? proposal.layoutId ?? "-"}</p>
       <p><strong>Regra comercial:</strong> {proposal.pricingRuleName ?? proposal.pricingRuleId ?? "-"}</p>
       <p><strong>Pasta local:</strong> {proposal.localFolderPath ?? "-"}</p>
+      <button onClick={openProposalLocalFolder}>Abrir pasta da proposta</button>
       <ItemsTable items={proposal.items} />
       <section className="sectionBand">
         <h2>Prompts geradas</h2>
@@ -543,6 +597,9 @@ function ProposalDetailView({ proposal }: { proposal: ProposalDetail }) {
           <button onClick={() => exportVisiblePrompt("text")} disabled={!visiblePrompt}>
             Exportar .txt
           </button>
+          <button onClick={openVisiblePromptExport} disabled={!visiblePrompt?.exportedPath}>
+            Abrir exportacao
+          </button>
         </div>
         {message && <p className="statusNote">{message}</p>}
         <ul className="promptList">
@@ -550,6 +607,13 @@ function ProposalDetailView({ proposal }: { proposal: ProposalDetail }) {
             <li key={run.id}>
               <button onClick={() => setVisiblePrompt(run)}>{run.promptTitle}</button>{" "}
               <span>{run.generatedAt}</span>
+              {run.exportedPath && (
+                <button onClick={() => openPath(run.exportedPath ?? "").catch((error: unknown) => {
+                  setMessage(error instanceof Error ? error.message : "Nao foi possivel abrir a exportacao.");
+                })}>
+                  Abrir exportacao
+                </button>
+              )}
             </li>
           ))}
         </ul>
@@ -566,10 +630,14 @@ function ProposalDetailView({ proposal }: { proposal: ProposalDetail }) {
           <label>Caminho do ficheiro final<input value={finalDocumentPath} onChange={(event) => setFinalDocumentPath(event.target.value)} /></label>
           <label>Etiqueta/versao<input value={finalDocumentVersion} onChange={(event) => setFinalDocumentVersion(event.target.value)} /></label>
         </div>
-        <button onClick={registerVisibleFinalDocument}>Registar documento final</button>
+        <div className="actions">
+          <button onClick={chooseFinalDocumentFile}>Escolher ficheiro</button>
+          <button onClick={registerVisibleFinalDocument}>Registar documento final</button>
+          <button onClick={openFinalDocumentsLocalFolder}>Abrir pasta final-documents</button>
+        </div>
         {finalDocuments.length > 0 && (
           <table>
-            <thead><tr><th>Nome</th><th>Tipo</th><th>Versao</th><th>Caminho local</th><th>OneDrive</th></tr></thead>
+            <thead><tr><th>Nome</th><th>Tipo</th><th>Versao</th><th>Caminho local</th><th>OneDrive</th><th>Acoes</th></tr></thead>
             <tbody>
               {finalDocuments.map((document) => (
                 <tr key={document.id}>
@@ -578,6 +646,7 @@ function ProposalDetailView({ proposal }: { proposal: ProposalDetail }) {
                   <td>{document.versionLabel ?? "-"}</td>
                   <td>{document.localPath ?? "-"}</td>
                   <td>{document.onedrivePath ?? "-"}</td>
+                  <td><button onClick={() => openRegisteredFinalDocument(document)} disabled={!document.localPath}>Abrir</button></td>
                 </tr>
               ))}
             </tbody>

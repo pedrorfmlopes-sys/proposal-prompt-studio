@@ -151,6 +151,20 @@ already exists, the app adds a suffix such as `_2` or `_3` instead of replacing
 it silently. Web/Vite mode does not access the real filesystem; it stores a
 preview record in `localStorage`.
 
+## File Picker And Opening Files
+
+The desktop/Tauri runtime supports:
+
+- choosing a final document with a file picker;
+- opening the proposal folder;
+- opening the proposal `final-documents/` folder;
+- opening registered final documents;
+- opening exported prompt files.
+
+These actions use Tauri plugins and are only available in the desktop runtime.
+Web/Vite mode remains preview-only and does not try to open real files or
+folders.
+
 ## Create The Local Database
 
 If `sqlite3` is installed, run:

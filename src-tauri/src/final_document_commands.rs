@@ -3,6 +3,7 @@ use std::path::{Path, PathBuf};
 
 use rusqlite::{params, OptionalExtension, Result};
 use tauri::AppHandle;
+use tauri_plugin_opener::OpenerExt;
 
 use crate::db;
 use crate::models::FinalDocument;
@@ -119,6 +120,33 @@ pub fn get_latest_final_document(
     )
     .optional()
     .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+pub fn ensure_final_documents_folder(local_folder_path: String) -> Result<String, String> {
+    if local_folder_path.trim().is_empty() {
+        return Err("A proposta nao tem pasta local definida.".to_string());
+    }
+
+    let final_documents_dir = PathBuf::from(local_folder_path.trim()).join("final-documents");
+    fs::create_dir_all(&final_documents_dir).map_err(|error| error.to_string())?;
+    Ok(final_documents_dir.to_string_lossy().to_string())
+}
+
+#[tauri::command]
+pub fn open_path(app: AppHandle, path: String) -> Result<(), String> {
+    if path.trim().is_empty() {
+        return Err("Indica um caminho valido.".to_string());
+    }
+
+    let target_path = PathBuf::from(path.trim());
+    if !target_path.exists() {
+        return Err("O ficheiro ja nao existe no caminho registado.".to_string());
+    }
+
+    app.opener()
+        .open_path(target_path.to_string_lossy().to_string(), None::<&str>)
+        .map_err(|error| error.to_string())
 }
 
 fn query_proposal_folder(

@@ -7,7 +7,7 @@ export const FINAL_DOCUMENT_STORAGE_KEY =
 const PREVIEW_MESSAGE =
   "Registo real de documentos finais disponivel apenas no runtime Tauri. Em modo web, esta acao e apenas preview.";
 
-const ALLOWED_FINAL_DOCUMENT_EXTENSIONS = [
+export const ALLOWED_FINAL_DOCUMENT_EXTENSIONS = [
   "pdf",
   "docx",
   "xlsx",

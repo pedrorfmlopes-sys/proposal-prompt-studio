@@ -36,6 +36,11 @@ import {
   sanitizeFinalDocumentFileName,
   validateRegisterFinalDocumentInput,
 } from "../src/services/finalDocumentService";
+import {
+  openPath,
+  pickFinalDocumentFile,
+  validatePath,
+} from "../src/services/fileDialogService";
 import type { AppSetting, PricingRule, ProposalDetail } from "../src/types";
 
 function assertMoney(actual: number, expected: number) {
@@ -490,6 +495,15 @@ assert.match(fallbackFinalDocument.localPath ?? "", /apenas preview/);
 const fallbackDocuments = await getFinalDocuments(12);
 assert.equal(fallbackDocuments.length, 1);
 assert.equal(fallbackDocuments[0].fileType, "docx");
+assert.throws(() => validatePath(""), /Indica um caminho valido/);
+await assert.rejects(
+  () => openPath("C:/Temp/Proposta_Final.pdf"),
+  /Esta acao so esta disponivel no runtime Tauri/,
+);
+await assert.rejects(
+  () => pickFinalDocumentFile(),
+  /Esta acao so esta disponivel no runtime Tauri/,
+);
 
 console.log("Service tests passed.");
 
