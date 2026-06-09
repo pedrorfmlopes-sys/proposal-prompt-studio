@@ -82,10 +82,13 @@ pub fn get_proposals(app: AppHandle) -> Result<Vec<ProposalSummary>, String> {
              ORDER BY proposal_date DESC, id DESC",
         )
         .map_err(|error| error.to_string())?;
-    stmt.query_map([], map_proposal_summary)
-        .map_err(|error| error.to_string())?
+    let rows = stmt
+        .query_map([], map_proposal_summary)
+        .map_err(|error| error.to_string())?;
+    let result = rows
         .collect::<Result<Vec<_>>>()
-        .map_err(|error| error.to_string())
+        .map_err(|error| error.to_string())?;
+    Ok(result)
 }
 
 #[tauri::command]
@@ -220,7 +223,9 @@ fn query_proposal_items(conn: &Connection, proposal_id: i64) -> Result<Vec<Propo
          WHERE proposal_id = ?1
          ORDER BY sort_order, id",
     )?;
-    stmt.query_map(params![proposal_id], map_proposal_item)?.collect()
+    let rows = stmt.query_map(params![proposal_id], map_proposal_item)?;
+    let result = rows.collect::<Result<Vec<_>>>()?;
+    Ok(result)
 }
 
 fn query_proposal_item(conn: &Connection, item_id: i64) -> Result<ProposalItem> {

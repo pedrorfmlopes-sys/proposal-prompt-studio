@@ -44,10 +44,13 @@ pub fn get_active_brands(app: AppHandle) -> Result<Vec<Brand>, String> {
              ORDER BY name",
         )
         .map_err(|error| error.to_string())?;
-    stmt.query_map([], map_brand)
-        .map_err(|error| error.to_string())?
+    let rows = stmt
+        .query_map([], map_brand)
+        .map_err(|error| error.to_string())?;
+    let result = rows
         .collect::<Result<Vec<_>>>()
-        .map_err(|error| error.to_string())
+        .map_err(|error| error.to_string())?;
+    Ok(result)
 }
 
 #[tauri::command]
@@ -98,7 +101,9 @@ fn query_settings(conn: &Connection) -> Result<Vec<AppSetting>> {
          FROM app_settings
          ORDER BY key",
     )?;
-    stmt.query_map([], map_setting)?.collect()
+    let rows = stmt.query_map([], map_setting)?;
+    let result = rows.collect::<Result<Vec<_>>>()?;
+    Ok(result)
 }
 
 fn query_setting(conn: &Connection, key: &str) -> Result<Option<AppSetting>> {
@@ -116,13 +121,17 @@ fn query_setting(conn: &Connection, key: &str) -> Result<Option<AppSetting>> {
 fn query_layouts(conn: &Connection, where_clause: &str) -> Result<Vec<Layout>> {
     let sql = layout_select_sql(where_clause);
     let mut stmt = conn.prepare(&sql)?;
-    stmt.query_map([], map_layout)?.collect()
+    let rows = stmt.query_map([], map_layout)?;
+    let result = rows.collect::<Result<Vec<_>>>()?;
+    Ok(result)
 }
 
 fn query_pricing_rules(conn: &Connection, where_clause: &str) -> Result<Vec<PricingRule>> {
     let sql = pricing_rule_select_sql(where_clause);
     let mut stmt = conn.prepare(&sql)?;
-    stmt.query_map([], map_pricing_rule)?.collect()
+    let rows = stmt.query_map([], map_pricing_rule)?;
+    let result = rows.collect::<Result<Vec<_>>>()?;
+    Ok(result)
 }
 
 fn layout_select_sql(where_clause: &str) -> String {

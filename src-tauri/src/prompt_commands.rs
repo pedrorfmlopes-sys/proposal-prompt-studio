@@ -43,10 +43,13 @@ pub fn get_prompt_runs(app: AppHandle, proposal_id: i64) -> Result<Vec<PromptRun
              ORDER BY generated_at DESC, id DESC",
         )
         .map_err(|error| error.to_string())?;
-    stmt.query_map(params![proposal_id], map_prompt_run)
-        .map_err(|error| error.to_string())?
+    let rows = stmt
+        .query_map(params![proposal_id], map_prompt_run)
+        .map_err(|error| error.to_string())?;
+    let result = rows
         .collect::<Result<Vec<_>>>()
-        .map_err(|error| error.to_string())
+        .map_err(|error| error.to_string())?;
+    Ok(result)
 }
 
 #[tauri::command]
