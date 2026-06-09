@@ -21,6 +21,11 @@ import {
   validateCreateProposalInput,
 } from "../src/services/proposalService";
 import { generateStructuredPrompt } from "../src/services/promptGenerationService";
+import {
+  buildPromptExportFileName,
+  getPromptExportExtension,
+  sanitizeFileName,
+} from "../src/services/promptExportService";
 import type { AppSetting, PricingRule, ProposalDetail } from "../src/types";
 
 function assertMoney(actual: number, expected: number) {
@@ -364,6 +369,34 @@ assert.match(rustPromptGenerator, /Validações por linha/);
 assert.match(rustPromptGenerator, /ceil_2_decimals/);
 assert.match(rustPromptGenerator, /Não confundir multiplicar por 1,15 com dividir por 0,85/);
 assert.match(rustPromptGenerator, /fn format_rule/);
+
+assert.equal(
+  sanitizeFileName('Prompt <PROP-2026-001> Cliente/Projeto: "Teste"'),
+  "Prompt_PROP-2026-001_Cliente_Projeto_Teste",
+);
+assert.equal(sanitizeFileName(""), "prompt");
+assert.equal(getPromptExportExtension("markdown"), ".md");
+assert.equal(getPromptExportExtension("text"), ".txt");
+assert.equal(
+  buildPromptExportFileName(
+    "Prompt - PROP-2026-001 - Cliente - Projeto",
+    new Date("2026-06-09T14:30:00"),
+    "markdown",
+  ),
+  "Prompt_-_PROP-2026-001_-_Cliente_-_Projeto_2026-06-09_1430.md",
+);
+assert.equal(
+  buildPromptExportFileName(
+    "Prompt - PROP-2026-001 - Cliente - Projeto",
+    new Date("2026-06-09T14:30:00"),
+    "text",
+  ),
+  "Prompt_-_PROP-2026-001_-_Cliente_-_Projeto_2026-06-09_1430.txt",
+);
+assert.throws(
+  () => getPromptExportExtension("pdf" as never),
+  /Unsupported prompt export format/,
+);
 
 console.log("Service tests passed.");
 

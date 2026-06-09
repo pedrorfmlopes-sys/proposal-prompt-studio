@@ -106,6 +106,17 @@ Prompt generation exists in both TypeScript preview mode and Rust/Tauri runtime.
 Both generators must keep the same section order, validation rules, commercial
 rounding language, and "do not invent data" instructions.
 
+## Export Prompts
+
+In a proposal detail view, generate or select a visible prompt and use:
+
+- `Exportar .md`
+- `Exportar .txt`
+
+Desktop/Tauri mode writes the file to the proposal folder under `prompts/` and
+updates `prompt_runs.exported_path`. Web/Vite mode does not write to disk; it
+returns a preview message because real export depends on the Tauri runtime.
+
 ## Create The Local Database
 
 If `sqlite3` is installed, run:

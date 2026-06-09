@@ -2,6 +2,7 @@ mod commands;
 mod db;
 mod folder_service;
 mod models;
+mod prompt_export_commands;
 mod prompt_commands;
 mod proposal_commands;
 
@@ -27,6 +28,9 @@ pub fn run() {
             prompt_commands::get_prompt_runs,
             prompt_commands::get_latest_prompt_run,
             prompt_commands::get_prompt_run_by_id,
+            prompt_export_commands::export_prompt_run,
+            prompt_export_commands::export_latest_prompt_run,
+            prompt_export_commands::get_prompt_export_path,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Proposal Prompt Studio");

@@ -22,6 +22,7 @@ import {
   getLatestPromptRun,
   getPromptRuns,
 } from "../services/promptRunService";
+import { exportPromptRun } from "../services/promptExportService";
 import { getAllSettings } from "../services/settingsService";
 import type {
   AppSetting,
@@ -412,6 +413,19 @@ function ProposalDetailView({ proposal }: { proposal: ProposalDetail }) {
       .catch(() => setMessage("Nao foi possivel copiar a prompt."));
   }
 
+  function exportVisiblePrompt(format: "markdown" | "text") {
+    if (!visiblePrompt) return;
+    exportPromptRun(visiblePrompt.id, format)
+      .then((result) => {
+        setMessage(`Prompt exportada para: ${result.exportedPath}`);
+        setVisiblePrompt({ ...visiblePrompt, exportedPath: result.exportedPath });
+        refreshPrompts();
+      })
+      .catch((error: unknown) => {
+        setMessage(error instanceof Error ? error.message : "Erro ao exportar prompt.");
+      });
+  }
+
   return (
     <section className="workspace">
       <header><p className="eyebrow">Detalhe</p><h1>{proposal.proposalNumber}</h1></header>
@@ -433,6 +447,12 @@ function ProposalDetailView({ proposal }: { proposal: ProposalDetail }) {
             Ver ultima prompt
           </button>
           <button onClick={copyPrompt} disabled={!visiblePrompt}>Copiar prompt</button>
+          <button onClick={() => exportVisiblePrompt("markdown")} disabled={!visiblePrompt}>
+            Exportar .md
+          </button>
+          <button onClick={() => exportVisiblePrompt("text")} disabled={!visiblePrompt}>
+            Exportar .txt
+          </button>
         </div>
         {message && <p className="statusNote">{message}</p>}
         <ul className="promptList">

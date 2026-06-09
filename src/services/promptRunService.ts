@@ -3,7 +3,7 @@ import { buildPromptTitle, generateStructuredPrompt } from "./promptGenerationSe
 import { getProposalById } from "./proposalService";
 import { callTauri, isTauriRuntime } from "./tauriClient";
 
-const STORAGE_KEY = "proposal-prompt-studio.preview.promptRuns";
+export const PROMPT_RUN_STORAGE_KEY = "proposal-prompt-studio.preview.promptRuns";
 
 export async function generateProposalPrompt(
   proposalId: number,
@@ -62,12 +62,12 @@ export async function copyPromptToClipboard(promptText: string): Promise<void> {
 }
 
 function readPromptRuns(): PromptRunDetail[] {
-  const raw = localStorage.getItem(STORAGE_KEY);
+  const raw = localStorage.getItem(PROMPT_RUN_STORAGE_KEY);
   return raw ? (JSON.parse(raw) as PromptRunDetail[]) : [];
 }
 
 function writePromptRuns(runs: PromptRunDetail[]): void {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(runs));
+  localStorage.setItem(PROMPT_RUN_STORAGE_KEY, JSON.stringify(runs));
 }
 
 function nextPromptId(): number {

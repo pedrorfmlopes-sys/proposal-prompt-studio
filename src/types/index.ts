@@ -209,6 +209,16 @@ export interface GeneratePromptResult {
   proposal: ProposalDetail | null;
 }
 
+export type PromptExportFormat = "markdown" | "text";
+
+export interface PromptExportResult {
+  promptRunId: number;
+  proposalId: number;
+  format: PromptExportFormat;
+  fileName: string;
+  exportedPath: string;
+}
+
 export interface FinalDocument {
   id: number;
   proposalId: number;
