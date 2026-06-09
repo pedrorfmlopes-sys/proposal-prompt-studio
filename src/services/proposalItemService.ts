@@ -17,6 +17,10 @@ export interface DraftProposalItem {
   calculationFactor: number | null;
   finalUnitPrice: number;
   lineTotal: number;
+  technicalSheetUrl?: string;
+  drawing2dUrl?: string;
+  model3dUrl?: string;
+  imagePath?: string;
   notes: string;
 }
 
@@ -66,6 +70,10 @@ export function toCreateProposalItemInput(
     calculationFactor: item.calculationFactor,
     finalUnitPrice: item.finalUnitPrice,
     lineTotal: item.lineTotal,
+    technicalSheetUrl: item.technicalSheetUrl,
+    drawing2dUrl: item.drawing2dUrl,
+    model3dUrl: item.model3dUrl,
+    imagePath: item.imagePath,
     notes: item.notes,
     sortOrder,
   };

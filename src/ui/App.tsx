@@ -2,7 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { getActiveBrands } from "../services/brandService";
 import { getDatabaseSummary } from "../services/dashboardService";
 import { getActiveLayouts } from "../services/layoutService";
-import { calculateLineTotal } from "../services/lineTotalService";
+import { calculateLineTotal, validateLineTotal } from "../services/lineTotalService";
+import { calculateFinalUnitPrice } from "../services/priceCalculationService";
 import {
   calculateProposalItem,
   type DraftProposalItem,
@@ -12,9 +13,12 @@ import { suggestNextProposalNumber } from "../services/proposalNumberService";
 import {
   calculateProposalTotal,
   createProposal,
+  deleteProposalItem,
   duplicateProposal,
   getProposalById,
   getProposals,
+  updateProposal,
+  updateProposalItem,
 } from "../services/proposalService";
 import { getActivePricingRules } from "../services/pricingRuleService";
 import {
@@ -46,8 +50,10 @@ import type {
   PricingRule,
   FinalDocument,
   ProposalDetail,
+  ProposalItem,
   ProposalSummary,
   PromptRunDetail,
+  UpdateProposalInput,
 } from "../types";
 
 type View = "dashboard" | "new" | "list" | "detail";
@@ -159,6 +165,13 @@ export function App() {
       {view === "detail" && selectedProposal && (
         <ProposalDetailView
           proposal={selectedProposal}
+          brands={brands}
+          layouts={layouts}
+          pricingRules={pricingRules}
+          onChanged={(proposal) => {
+            setSelectedProposal(proposal);
+            refreshProposals();
+          }}
           onDuplicated={(proposal) => {
             setSelectedProposal(proposal);
             refreshProposals();
@@ -456,9 +469,17 @@ function ProposalListView({
 
 function ProposalDetailView({
   proposal,
+  brands,
+  layouts,
+  pricingRules,
+  onChanged,
   onDuplicated,
 }: {
   proposal: ProposalDetail;
+  brands: Brand[];
+  layouts: Layout[];
+  pricingRules: PricingRule[];
+  onChanged: (proposal: ProposalDetail) => void;
   onDuplicated: (proposal: ProposalDetail) => void;
 }) {
   const [promptRuns, setPromptRuns] = useState<PromptRunDetail[]>([]);
@@ -468,6 +489,16 @@ function ProposalDetailView({
   const [finalDocumentVersion, setFinalDocumentVersion] = useState("");
   const [editingFinalDocumentId, setEditingFinalDocumentId] = useState<number | null>(null);
   const [message, setMessage] = useState("");
+  const [isEditingProposal, setIsEditingProposal] = useState(false);
+  const [proposalForm, setProposalForm] = useState(() => proposalToForm(proposal));
+  const [editingItem, setEditingItem] = useState<ProposalItem | null>(null);
+  const [itemForm, setItemForm] = useState(() => proposalItemToForm(proposal.items[0] ?? null));
+
+  useEffect(() => {
+    setProposalForm(proposalToForm(proposal));
+    setEditingItem(null);
+    setItemForm(proposalItemToForm(null));
+  }, [proposal]);
 
   const refreshPrompts = useCallback(() => {
     getPromptRuns(proposal.id).then(setPromptRuns);
@@ -489,6 +520,115 @@ function ProposalDetailView({
   useEffect(() => {
     refreshFinalDocuments();
   }, [refreshFinalDocuments]);
+
+  function saveProposalChanges() {
+    const input: UpdateProposalInput = {
+      title: proposalForm.title,
+      clientNameSnapshot: proposalForm.clientNameSnapshot,
+      projectName: proposalForm.projectName,
+      projectLocation: proposalForm.projectLocation,
+      proposalDate: proposalForm.proposalDate,
+      language: proposalForm.language,
+      currency: proposalForm.currency,
+      vatMode: proposalForm.vatMode,
+      validityText: proposalForm.validityText,
+      commercialConditions: proposalForm.commercialConditions,
+      proposalType: proposalForm.proposalType,
+      layoutId: proposalForm.layoutId ? Number(proposalForm.layoutId) : null,
+      pricingRuleId: proposalForm.pricingRuleId ? Number(proposalForm.pricingRuleId) : null,
+      notes: proposalForm.notes,
+    };
+    updateProposal(proposal.id, input)
+      .then((updatedProposal) => {
+        setMessage("Proposta atualizada.");
+        setIsEditingProposal(false);
+        onChanged(updatedProposal);
+      })
+      .catch((error: unknown) => {
+        setMessage(error instanceof Error ? error.message : "Nao foi possivel atualizar a proposta.");
+      });
+  }
+
+  function startEditingItem(item: ProposalItem) {
+    setEditingItem(item);
+    setItemForm(proposalItemToForm(item));
+    setMessage(`A editar linha ${item.reference}.`);
+  }
+
+  function saveItemChanges() {
+    if (!editingItem) return;
+    const rule =
+      pricingRules.find((item) => item.id === Number(itemForm.calculationRuleId)) ??
+      pricingRules.find((item) => item.id === proposal.pricingRuleId);
+    if (!rule) {
+      setMessage("Seleciona uma regra comercial valida para recalcular a linha.");
+      return;
+    }
+    const brand = brands.find((item) => item.id === Number(itemForm.brandId));
+    const originalUnitPrice = Number(itemForm.originalUnitPrice);
+    const quantity = Number(itemForm.quantity);
+    const finalUnitPrice = calculateFinalUnitPrice({
+      originalPrice: originalUnitPrice,
+      ruleType: rule.type,
+      factor: rule.factor,
+      roundingMode: rule.roundingMode,
+    }).finalUnitPrice;
+    const lineTotal = calculateLineTotal(finalUnitPrice, quantity);
+    const validation = validateLineTotal(finalUnitPrice, quantity, lineTotal);
+    if (!validation.isValid) {
+      setMessage("Line total must match final unit price times quantity");
+      return;
+    }
+
+    updateProposalItem(editingItem.id, {
+      brandId: itemForm.brandId ? Number(itemForm.brandId) : null,
+      brandNameSnapshot: brand?.displayName ?? brand?.name ?? itemForm.brandNameSnapshot,
+      optionGroup: itemForm.optionGroup,
+      reference: itemForm.reference,
+      description: itemForm.description,
+      finish: itemForm.finish,
+      quantity,
+      originalUnitPrice,
+      calculationRuleId: rule.id,
+      calculationFactor: rule.factor,
+      finalUnitPrice,
+      lineTotal,
+      technicalSheetUrl: itemForm.technicalSheetUrl,
+      drawing2dUrl: itemForm.drawing2dUrl,
+      model3dUrl: itemForm.model3dUrl,
+      imagePath: itemForm.imagePath,
+      notes: itemForm.notes,
+      sortOrder: Number(itemForm.sortOrder),
+    })
+      .then((updatedProposal) => {
+        setMessage("Linha atualizada.");
+        setEditingItem(null);
+        setItemForm(proposalItemToForm(null));
+        onChanged(updatedProposal);
+      })
+      .catch((error: unknown) => {
+        setMessage(error instanceof Error ? error.message : "Nao foi possivel atualizar a linha.");
+      });
+  }
+
+  function removeItem(item: ProposalItem) {
+    const confirmed = window.confirm(
+      "Pretendes remover esta linha? O registo sera removido da proposta, mas nenhum ficheiro fisico sera apagado.",
+    );
+    if (!confirmed) return;
+    deleteProposalItem(item.id)
+      .then((updatedProposal) => {
+        setMessage("Linha removida.");
+        if (editingItem?.id === item.id) {
+          setEditingItem(null);
+          setItemForm(proposalItemToForm(null));
+        }
+        onChanged(updatedProposal);
+      })
+      .catch((error: unknown) => {
+        setMessage(error instanceof Error ? error.message : "Nao foi possivel remover a linha.");
+      });
+  }
 
   function generatePrompt() {
     generateProposalPrompt(proposal.id)
@@ -653,10 +793,74 @@ function ProposalDetailView({
       <p><strong>Regra comercial:</strong> {proposal.pricingRuleName ?? proposal.pricingRuleId ?? "-"}</p>
       <p><strong>Pasta local:</strong> {proposal.localFolderPath ?? "-"}</p>
       <div className="actions">
+        <button onClick={() => setIsEditingProposal(true)}>Editar proposta</button>
         <button onClick={openProposalLocalFolder}>Abrir pasta da proposta</button>
         <button onClick={duplicateVisibleProposal}>Duplicar proposta</button>
       </div>
-      <ItemsTable items={proposal.items} />
+      {isEditingProposal && (
+        <section className="sectionBand">
+          <h2>Editar proposta</h2>
+          <div className="formGrid">
+            <label>Titulo<input value={proposalForm.title} onChange={(event) => setProposalForm({ ...proposalForm, title: event.target.value })} /></label>
+            <label>Cliente<input value={proposalForm.clientNameSnapshot} onChange={(event) => setProposalForm({ ...proposalForm, clientNameSnapshot: event.target.value })} /></label>
+            <label>Projeto<input value={proposalForm.projectName} onChange={(event) => setProposalForm({ ...proposalForm, projectName: event.target.value })} /></label>
+            <label>Local<input value={proposalForm.projectLocation} onChange={(event) => setProposalForm({ ...proposalForm, projectLocation: event.target.value })} /></label>
+            <label>Data<input type="date" value={proposalForm.proposalDate} onChange={(event) => setProposalForm({ ...proposalForm, proposalDate: event.target.value })} /></label>
+            <label>Idioma<input value={proposalForm.language} onChange={(event) => setProposalForm({ ...proposalForm, language: event.target.value })} /></label>
+            <label>Moeda<input value={proposalForm.currency} onChange={(event) => setProposalForm({ ...proposalForm, currency: event.target.value })} /></label>
+            <label>IVA<input value={proposalForm.vatMode} onChange={(event) => setProposalForm({ ...proposalForm, vatMode: event.target.value })} /></label>
+            <label>Tipo<input value={proposalForm.proposalType} onChange={(event) => setProposalForm({ ...proposalForm, proposalType: event.target.value })} /></label>
+            <label>Layout<select value={proposalForm.layoutId} onChange={(event) => setProposalForm({ ...proposalForm, layoutId: event.target.value })}><option value="">Sem layout</option>{layouts.map((layout) => <option key={layout.id} value={layout.id}>{layout.name}</option>)}</select></label>
+            <label>Regra comercial<select value={proposalForm.pricingRuleId} onChange={(event) => setProposalForm({ ...proposalForm, pricingRuleId: event.target.value })}><option value="">Sem regra</option>{pricingRules.map((rule) => <option key={rule.id} value={rule.id}>{rule.name}</option>)}</select></label>
+            <label>Validade<input value={proposalForm.validityText} onChange={(event) => setProposalForm({ ...proposalForm, validityText: event.target.value })} /></label>
+          </div>
+          <label className="wideLabel">Condicoes comerciais<textarea value={proposalForm.commercialConditions} onChange={(event) => setProposalForm({ ...proposalForm, commercialConditions: event.target.value })} /></label>
+          <label className="wideLabel">Notas<textarea value={proposalForm.notes} onChange={(event) => setProposalForm({ ...proposalForm, notes: event.target.value })} /></label>
+          <div className="actions">
+            <button onClick={saveProposalChanges}>Guardar alteracoes</button>
+            <button onClick={() => {
+              setProposalForm(proposalToForm(proposal));
+              setIsEditingProposal(false);
+            }}>
+              Cancelar
+            </button>
+          </div>
+        </section>
+      )}
+      <section className="sectionBand">
+        <h2>Artigos</h2>
+        <ItemsTable items={proposal.items} onEdit={startEditingItem} onRemove={removeItem} />
+        {editingItem && (
+          <div className="editPanel">
+            <h2>Editar linha</h2>
+            <div className="formGrid">
+              <label>Marca<select value={itemForm.brandId} onChange={(event) => setItemForm({ ...itemForm, brandId: event.target.value })}><option value="">Sem marca</option>{brands.map((brand) => <option key={brand.id} value={brand.id}>{brand.displayName ?? brand.name}</option>)}</select></label>
+              <label>Grupo/opcao<input value={itemForm.optionGroup} onChange={(event) => setItemForm({ ...itemForm, optionGroup: event.target.value })} /></label>
+              <label>Referencia<input value={itemForm.reference} onChange={(event) => setItemForm({ ...itemForm, reference: event.target.value })} /></label>
+              <label>Descricao<input value={itemForm.description} onChange={(event) => setItemForm({ ...itemForm, description: event.target.value })} /></label>
+              <label>Acabamento<input value={itemForm.finish} onChange={(event) => setItemForm({ ...itemForm, finish: event.target.value })} /></label>
+              <label>Quantidade<input type="number" step="0.01" value={itemForm.quantity} onChange={(event) => setItemForm({ ...itemForm, quantity: event.target.value })} /></label>
+              <label>Preco original<input type="number" step="0.01" value={itemForm.originalUnitPrice} onChange={(event) => setItemForm({ ...itemForm, originalUnitPrice: event.target.value })} /></label>
+              <label>Regra<select value={itemForm.calculationRuleId} onChange={(event) => setItemForm({ ...itemForm, calculationRuleId: event.target.value })}>{pricingRules.map((rule) => <option key={rule.id} value={rule.id}>{rule.name}</option>)}</select></label>
+              <label>Ficha tecnica<input value={itemForm.technicalSheetUrl} onChange={(event) => setItemForm({ ...itemForm, technicalSheetUrl: event.target.value })} /></label>
+              <label>Desenho 2D<input value={itemForm.drawing2dUrl} onChange={(event) => setItemForm({ ...itemForm, drawing2dUrl: event.target.value })} /></label>
+              <label>Modelo 3D<input value={itemForm.model3dUrl} onChange={(event) => setItemForm({ ...itemForm, model3dUrl: event.target.value })} /></label>
+              <label>Imagem<input value={itemForm.imagePath} onChange={(event) => setItemForm({ ...itemForm, imagePath: event.target.value })} /></label>
+              <label>Ordem<input type="number" value={itemForm.sortOrder} onChange={(event) => setItemForm({ ...itemForm, sortOrder: event.target.value })} /></label>
+              <label>Observacoes<input value={itemForm.notes} onChange={(event) => setItemForm({ ...itemForm, notes: event.target.value })} /></label>
+            </div>
+            <div className="actions">
+              <button onClick={saveItemChanges}>Guardar linha</button>
+              <button onClick={() => {
+                setEditingItem(null);
+                setItemForm(proposalItemToForm(null));
+              }}>
+                Cancelar
+              </button>
+            </div>
+          </div>
+        )}
+      </section>
       <section className="sectionBand">
         <h2>Prompts geradas</h2>
         <div className="actions">
@@ -736,10 +940,18 @@ function ProposalDetailView({
   );
 }
 
-function ItemsTable({ items }: { items: Array<DraftProposalItem | { reference: string; description: string | null; quantity: number; finalUnitPrice: number; lineTotal: number; notes?: string | null }> }) {
+function ItemsTable({
+  items,
+  onEdit,
+  onRemove,
+}: {
+  items: Array<DraftProposalItem | ProposalItem>;
+  onEdit?: (item: ProposalItem) => void;
+  onRemove?: (item: ProposalItem) => void;
+}) {
   return (
     <table>
-      <thead><tr><th>Referência</th><th>Descrição</th><th>Qtd.</th><th>Preço final</th><th>Total</th><th>Obs.</th></tr></thead>
+      <thead><tr><th>Referência</th><th>Descrição</th><th>Qtd.</th><th>Preço final</th><th>Total</th><th>Obs.</th>{onEdit && <th>Ações</th>}</tr></thead>
       <tbody>
         {items.map((item, index) => (
           <tr key={`${item.reference}-${index}`}>
@@ -749,11 +961,56 @@ function ItemsTable({ items }: { items: Array<DraftProposalItem | { reference: s
             <td>{item.finalUnitPrice.toFixed(2)} EUR</td>
             <td>{item.lineTotal.toFixed(2)} EUR</td>
             <td>{item.notes}</td>
+            {onEdit && "id" in item && (
+              <td>
+                <button onClick={() => onEdit(item)}>Editar</button>
+                <button onClick={() => onRemove?.(item)}>Remover</button>
+              </td>
+            )}
           </tr>
         ))}
       </tbody>
     </table>
   );
+}
+
+function proposalToForm(proposal: ProposalDetail) {
+  return {
+    title: proposal.title,
+    clientNameSnapshot: proposal.clientNameSnapshot ?? "",
+    projectName: proposal.projectName ?? "",
+    projectLocation: proposal.projectLocation ?? "",
+    proposalDate: proposal.proposalDate,
+    language: proposal.language,
+    currency: proposal.currency,
+    vatMode: proposal.vatMode,
+    validityText: proposal.validityText ?? "",
+    commercialConditions: proposal.commercialConditions ?? "",
+    proposalType: proposal.proposalType ?? "",
+    layoutId: proposal.layoutId ? String(proposal.layoutId) : "",
+    pricingRuleId: proposal.pricingRuleId ? String(proposal.pricingRuleId) : "",
+    notes: proposal.notes ?? "",
+  };
+}
+
+function proposalItemToForm(item: ProposalItem | null) {
+  return {
+    brandId: item?.brandId ? String(item.brandId) : "",
+    brandNameSnapshot: item?.brandNameSnapshot ?? "",
+    optionGroup: item?.optionGroup ?? "",
+    reference: item?.reference ?? "",
+    description: item?.description ?? "",
+    finish: item?.finish ?? "",
+    quantity: String(item?.quantity ?? 1),
+    originalUnitPrice: String(item?.originalUnitPrice ?? 0),
+    calculationRuleId: item?.calculationRuleId ? String(item.calculationRuleId) : "",
+    technicalSheetUrl: item?.technicalSheetUrl ?? "",
+    drawing2dUrl: item?.drawing2dUrl ?? "",
+    model3dUrl: item?.model3dUrl ?? "",
+    imagePath: item?.imagePath ?? "",
+    notes: item?.notes ?? "",
+    sortOrder: String(item?.sortOrder ?? 1),
+  };
 }
 
 function Metric({ label, value }: { label: string; value: string | number }) {

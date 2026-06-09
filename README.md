@@ -185,6 +185,17 @@ Item technical references, such as technical sheets, 2D drawings, 3D models,
 and image paths, are preserved as stored links/paths; physical files are not
 copied.
 
+## Edit Proposals And Items
+
+Saved proposals can be edited from the proposal detail view. General proposal
+fields and existing item lines can be updated without changing the proposal
+number or local folder path.
+
+Item quantity, original price, and commercial rule edits recalculate the final
+unit price and line total, then refresh the proposal total. Item lines can be
+removed, but this phase does not allow removing the last remaining item from a
+proposal. Removing a line does not delete physical files.
+
 ## Create The Local Database
 
 If `sqlite3` is installed, run:

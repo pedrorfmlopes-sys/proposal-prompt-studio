@@ -5,7 +5,7 @@ use crate::db;
 use crate::folder_service;
 use crate::models::{
     CreateProposalInput, CreateProposalItemInput, ProposalDetail, ProposalFolderRequest,
-    ProposalItem, ProposalSummary,
+    ProposalItem, ProposalSummary, UpdateProposalInput, UpdateProposalItemInput,
 };
 
 #[tauri::command]
@@ -201,6 +201,62 @@ pub fn get_proposal_by_id(app: AppHandle, id: i64) -> Result<Option<ProposalDeta
 }
 
 #[tauri::command]
+pub fn update_proposal(
+    app: AppHandle,
+    proposal_id: i64,
+    input: UpdateProposalInput,
+) -> Result<ProposalDetail, String> {
+    if proposal_id <= 0 {
+        return Err("proposal_id must be greater than zero".to_string());
+    }
+    validate_update_proposal_input(&input)?;
+
+    let conn = db::open_initialized(&app)?;
+    let affected = conn
+        .execute(
+            "UPDATE proposals
+             SET title = ?1,
+                 client_name_snapshot = ?2,
+                 project_name = ?3,
+                 project_location = ?4,
+                 proposal_date = ?5,
+                 language = ?6,
+                 currency = ?7,
+                 vat_mode = ?8,
+                 validity_text = ?9,
+                 commercial_conditions = ?10,
+                 proposal_type = ?11,
+                 layout_id = ?12,
+                 pricing_rule_id = ?13,
+                 notes = ?14
+             WHERE id = ?15",
+            params![
+                input.title,
+                input.client_name_snapshot,
+                input.project_name,
+                input.project_location,
+                input.proposal_date,
+                input.language,
+                input.currency,
+                input.vat_mode,
+                input.validity_text,
+                input.commercial_conditions,
+                input.proposal_type,
+                input.layout_id,
+                input.pricing_rule_id,
+                input.notes,
+                proposal_id,
+            ],
+        )
+        .map_err(|error| error.to_string())?;
+    if affected == 0 {
+        return Err("Proposal not found".to_string());
+    }
+
+    get_proposal_by_id(app, proposal_id)?.ok_or_else(|| "Updated proposal not found".to_string())
+}
+
+#[tauri::command]
 pub fn add_proposal_item(
     app: AppHandle,
     proposal_id: i64,
@@ -212,6 +268,115 @@ pub fn add_proposal_item(
     update_total_from_items(&conn, proposal_id).map_err(|error| error.to_string())?;
     let item_id = conn.last_insert_rowid();
     query_proposal_item(&conn, item_id).map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+pub fn update_proposal_item(
+    app: AppHandle,
+    item_id: i64,
+    input: UpdateProposalItemInput,
+) -> Result<ProposalDetail, String> {
+    if item_id <= 0 {
+        return Err("item_id must be greater than zero".to_string());
+    }
+    validate_item_input(&input)?;
+
+    let mut conn = db::open_initialized(&app)?;
+    let tx = conn.transaction().map_err(|error| error.to_string())?;
+    let proposal_id = tx
+        .query_row(
+            "SELECT proposal_id FROM proposal_items WHERE id = ?1",
+            params![item_id],
+            |row| row.get::<_, i64>(0),
+        )
+        .optional()
+        .map_err(|error| error.to_string())?
+        .ok_or_else(|| "Proposal item not found".to_string())?;
+
+    tx.execute(
+        "UPDATE proposal_items
+         SET brand_id = ?1,
+             brand_name_snapshot = ?2,
+             option_group = ?3,
+             reference = ?4,
+             description = ?5,
+             finish = ?6,
+             quantity = ?7,
+             original_unit_price = ?8,
+             calculation_rule_id = ?9,
+             calculation_factor = ?10,
+             final_unit_price = ?11,
+             line_total = ?12,
+             technical_sheet_url = ?13,
+             drawing_2d_url = ?14,
+             model_3d_url = ?15,
+             image_path = ?16,
+             notes = ?17,
+             sort_order = ?18
+         WHERE id = ?19",
+        params![
+            input.brand_id,
+            input.brand_name_snapshot,
+            input.option_group,
+            input.reference,
+            input.description,
+            input.finish,
+            input.quantity,
+            input.original_unit_price,
+            input.calculation_rule_id,
+            input.calculation_factor,
+            input.final_unit_price,
+            input.line_total,
+            input.technical_sheet_url,
+            input.drawing2d_url,
+            input.model3d_url,
+            input.image_path,
+            input.notes,
+            input.sort_order,
+            item_id,
+        ],
+    )
+    .map_err(|error| error.to_string())?;
+    update_total_from_items(&tx, proposal_id).map_err(|error| error.to_string())?;
+    tx.commit().map_err(|error| error.to_string())?;
+
+    get_proposal_by_id(app, proposal_id)?.ok_or_else(|| "Updated proposal not found".to_string())
+}
+
+#[tauri::command]
+pub fn delete_proposal_item(app: AppHandle, item_id: i64) -> Result<ProposalDetail, String> {
+    if item_id <= 0 {
+        return Err("item_id must be greater than zero".to_string());
+    }
+
+    let mut conn = db::open_initialized(&app)?;
+    let tx = conn.transaction().map_err(|error| error.to_string())?;
+    let proposal_id = tx
+        .query_row(
+            "SELECT proposal_id FROM proposal_items WHERE id = ?1",
+            params![item_id],
+            |row| row.get::<_, i64>(0),
+        )
+        .optional()
+        .map_err(|error| error.to_string())?
+        .ok_or_else(|| "Proposal item not found".to_string())?;
+    let item_count = tx
+        .query_row(
+            "SELECT COUNT(*) FROM proposal_items WHERE proposal_id = ?1",
+            params![proposal_id],
+            |row| row.get::<_, i64>(0),
+        )
+        .map_err(|error| error.to_string())?;
+    if item_count <= 1 {
+        return Err("A proposta deve manter pelo menos um artigo.".to_string());
+    }
+
+    tx.execute("DELETE FROM proposal_items WHERE id = ?1", params![item_id])
+        .map_err(|error| error.to_string())?;
+    update_total_from_items(&tx, proposal_id).map_err(|error| error.to_string())?;
+    tx.commit().map_err(|error| error.to_string())?;
+
+    get_proposal_by_id(app, proposal_id)?.ok_or_else(|| "Updated proposal not found".to_string())
 }
 
 #[tauri::command]
@@ -418,6 +583,31 @@ fn validate_proposal_input(input: &CreateProposalInput) -> Result<(), String> {
     let subtotal = input.items.iter().map(|item| item.line_total).sum::<f64>();
     if (subtotal - input.total_amount).abs() > 0.01 {
         return Err("Proposal total must match item subtotal".to_string());
+    }
+    Ok(())
+}
+
+fn validate_update_proposal_input(input: &UpdateProposalInput) -> Result<(), String> {
+    if input.title.trim().is_empty() {
+        return Err("Proposal title is required".to_string());
+    }
+    if input.client_name_snapshot.trim().is_empty() {
+        return Err("Client name is required".to_string());
+    }
+    if input.project_name.trim().is_empty() {
+        return Err("Project name is required".to_string());
+    }
+    if input.proposal_date.trim().is_empty() {
+        return Err("Proposal date is required".to_string());
+    }
+    if input.language.trim().is_empty() {
+        return Err("Language is required".to_string());
+    }
+    if input.currency.trim().is_empty() {
+        return Err("Currency is required".to_string());
+    }
+    if input.vat_mode.trim().is_empty() {
+        return Err("VAT mode is required".to_string());
     }
     Ok(())
 }

@@ -139,6 +139,23 @@ export interface CreateProposalInput {
   items: CreateProposalItemInput[];
 }
 
+export interface UpdateProposalInput {
+  title: string;
+  clientNameSnapshot: string;
+  projectName: string;
+  projectLocation?: string;
+  proposalDate: string;
+  language: string;
+  currency: string;
+  vatMode: VatMode;
+  validityText?: string;
+  commercialConditions?: string;
+  proposalType?: ProposalType;
+  layoutId?: number | null;
+  pricingRuleId?: number | null;
+  notes?: string;
+}
+
 export interface ProposalFile {
   id: number;
   proposalId: number;
@@ -193,6 +210,8 @@ export interface CreateProposalItemInput {
   notes?: string;
   sortOrder: number;
 }
+
+export type UpdateProposalItemInput = CreateProposalItemInput;
 
 export interface PromptRun {
   id: number;

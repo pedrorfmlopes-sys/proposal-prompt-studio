@@ -106,6 +106,25 @@ pub struct CreateProposalInput {
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct UpdateProposalInput {
+    pub title: String,
+    pub client_name_snapshot: String,
+    pub project_name: String,
+    pub project_location: Option<String>,
+    pub proposal_date: String,
+    pub language: String,
+    pub currency: String,
+    pub vat_mode: String,
+    pub validity_text: Option<String>,
+    pub commercial_conditions: Option<String>,
+    pub proposal_type: Option<String>,
+    pub layout_id: Option<i64>,
+    pub pricing_rule_id: Option<i64>,
+    pub notes: Option<String>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CreateProposalItemInput {
     pub brand_id: Option<i64>,
     pub brand_name_snapshot: Option<String>,
@@ -126,6 +145,8 @@ pub struct CreateProposalItemInput {
     pub notes: Option<String>,
     pub sort_order: i64,
 }
+
+pub type UpdateProposalItemInput = CreateProposalItemInput;
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]

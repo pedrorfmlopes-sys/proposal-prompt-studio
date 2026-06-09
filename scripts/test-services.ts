@@ -18,7 +18,10 @@ import {
 import { suggestNextProposalNumber } from "../src/services/proposalNumberService";
 import {
   calculateProposalTotal,
+  deleteProposalItem,
   duplicateProposal,
+  updateProposal,
+  updateProposalItem,
   validateCreateProposalInput,
 } from "../src/services/proposalService";
 import { generateStructuredPrompt } from "../src/services/promptGenerationService";
@@ -585,6 +588,140 @@ localStorage.setItem(
 );
 await assert.rejects(
   () => duplicateProposal(1),
+  /Line total must match final unit price times quantity/,
+);
+
+localStorage.setItem(
+  "proposal-prompt-studio.preview.proposals",
+  JSON.stringify([promptProposal]),
+);
+const updatedPreviewProposal = await updateProposal(1, {
+  title: "Titulo editado",
+  clientNameSnapshot: "Cliente editado",
+  projectName: "Projeto editado",
+  projectLocation: "Porto",
+  proposalDate: "2026-06-09",
+  language: "pt-PT",
+  currency: "EUR",
+  vatMode: "sem_iva",
+  validityText: "45 dias",
+  commercialConditions: "Condicoes editadas",
+  proposalType: "update",
+  layoutId: 2,
+  pricingRuleId: divideRule.id,
+  notes: "Notas editadas",
+});
+assert.equal(updatedPreviewProposal.title, "Titulo editado");
+assert.equal(updatedPreviewProposal.clientNameSnapshot, "Cliente editado");
+assert.equal(updatedPreviewProposal.projectName, "Projeto editado");
+assert.equal(updatedPreviewProposal.proposalNumber, promptProposal.proposalNumber);
+assert.equal(updatedPreviewProposal.localFolderPath, promptProposal.localFolderPath);
+
+const quantityEditLineTotal = calculateLineTotal(61.57, 10);
+const quantityEditedProposal = await updateProposalItem(1, {
+  brandId: promptProposal.items[0].brandId,
+  brandNameSnapshot: promptProposal.items[0].brandNameSnapshot,
+  optionGroup: promptProposal.items[0].optionGroup ?? undefined,
+  reference: promptProposal.items[0].reference,
+  description: promptProposal.items[0].description ?? undefined,
+  finish: promptProposal.items[0].finish ?? undefined,
+  quantity: 10,
+  originalUnitPrice: 52.33,
+  calculationRuleId: divideRule.id,
+  calculationFactor: divideRule.factor,
+  finalUnitPrice: 61.57,
+  lineTotal: quantityEditLineTotal,
+  technicalSheetUrl: promptProposal.items[0].technicalSheetUrl ?? undefined,
+  drawing2dUrl: promptProposal.items[0].drawing2dUrl ?? undefined,
+  model3dUrl: promptProposal.items[0].model3dUrl ?? undefined,
+  imagePath: promptProposal.items[0].imagePath ?? undefined,
+  notes: "Linha editada",
+  sortOrder: 1,
+});
+assertMoney(quantityEditedProposal.items[0].lineTotal, quantityEditLineTotal);
+assertMoney(quantityEditedProposal.totalAmount, quantityEditLineTotal);
+assert.equal(quantityEditedProposal.items[0].technicalSheetUrl, promptProposal.items[0].technicalSheetUrl);
+assert.equal(quantityEditedProposal.items[0].drawing2dUrl, promptProposal.items[0].drawing2dUrl);
+assert.equal(quantityEditedProposal.items[0].model3dUrl, promptProposal.items[0].model3dUrl);
+assert.equal(quantityEditedProposal.items[0].imagePath, promptProposal.items[0].imagePath);
+
+const priceEditFinalUnitPrice = calculateFinalUnitPrice({
+  originalPrice: 100,
+  ruleType: "divide",
+  factor: 0.85,
+  roundingMode: "ceil_2_decimals",
+}).finalUnitPrice;
+const priceEditLineTotal = calculateLineTotal(priceEditFinalUnitPrice, 10);
+const priceEditedProposal = await updateProposalItem(1, {
+  brandId: promptProposal.items[0].brandId,
+  brandNameSnapshot: promptProposal.items[0].brandNameSnapshot,
+  optionGroup: promptProposal.items[0].optionGroup ?? undefined,
+  reference: promptProposal.items[0].reference,
+  description: "Descricao com preco editado",
+  finish: promptProposal.items[0].finish ?? undefined,
+  quantity: 10,
+  originalUnitPrice: 100,
+  calculationRuleId: divideRule.id,
+  calculationFactor: divideRule.factor,
+  finalUnitPrice: priceEditFinalUnitPrice,
+  lineTotal: priceEditLineTotal,
+  technicalSheetUrl: promptProposal.items[0].technicalSheetUrl ?? undefined,
+  drawing2dUrl: promptProposal.items[0].drawing2dUrl ?? undefined,
+  model3dUrl: promptProposal.items[0].model3dUrl ?? undefined,
+  imagePath: promptProposal.items[0].imagePath ?? undefined,
+  notes: "Preco editado",
+  sortOrder: 1,
+});
+assertMoney(priceEditedProposal.items[0].finalUnitPrice, 117.65);
+assertMoney(priceEditedProposal.totalAmount, priceEditLineTotal);
+
+const removableSecondItem = {
+  ...promptProposal.items[0],
+  id: 2,
+  reference: "SECOND",
+  quantity: 1,
+  lineTotal: 61.57,
+  sortOrder: 2,
+};
+localStorage.setItem(
+  "proposal-prompt-studio.preview.proposals",
+  JSON.stringify([
+    {
+      ...promptProposal,
+      items: [promptProposal.items[0], removableSecondItem],
+      totalAmount: 13606.97,
+    },
+  ]),
+);
+const afterRemovalProposal = await deleteProposalItem(2);
+assert.equal(afterRemovalProposal.items.length, 1);
+assertMoney(afterRemovalProposal.totalAmount, promptProposal.items[0].lineTotal);
+assert.throws(
+  () => deleteProposalItem(1),
+  /A proposta deve manter pelo menos um artigo/,
+);
+assert.throws(
+  () =>
+    updateProposalItem(1, {
+      brandId: promptProposal.items[0].brandId,
+      brandNameSnapshot: promptProposal.items[0].brandNameSnapshot,
+      optionGroup: promptProposal.items[0].optionGroup ?? undefined,
+      reference: promptProposal.items[0].reference,
+      description: promptProposal.items[0].description ?? undefined,
+      finish: promptProposal.items[0].finish ?? undefined,
+      quantity: 10,
+      originalUnitPrice: 52.33,
+      calculationRuleId: divideRule.id,
+      calculationFactor: divideRule.factor,
+      finalUnitPrice: 61.57,
+      lineTotal: 1,
+      technicalSheetUrl: promptProposal.items[0].technicalSheetUrl ?? undefined,
+      drawing2dUrl: promptProposal.items[0].drawing2dUrl ?? undefined,
+      model3dUrl: promptProposal.items[0].model3dUrl ?? undefined,
+      imagePath: promptProposal.items[0].imagePath ?? undefined,
+      notes: "",
+      sortOrder: 1,
+    }),
   /Line total must match final unit price times quantity/,
 );
 

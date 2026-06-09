@@ -169,6 +169,12 @@ button:disabled {
   margin: 24px 0;
 }
 
+.editPanel {
+  border-top: 1px solid #dbe3df;
+  margin-top: 18px;
+  padding-top: 18px;
+}
+
 table {
   width: 100%;
   border-collapse: collapse;
