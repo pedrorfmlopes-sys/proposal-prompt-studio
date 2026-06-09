@@ -78,6 +78,72 @@ export function createProposal(input: CreateProposalInput): Promise<ProposalDeta
   return Promise.resolve(proposal);
 }
 
+export async function duplicateProposal(sourceProposalId: number): Promise<ProposalDetail> {
+  if (sourceProposalId <= 0) {
+    throw new Error("Source proposal id must be greater than zero");
+  }
+
+  if (isTauriRuntime()) {
+    return callTauri<ProposalDetail>("duplicate_proposal", { sourceProposalId });
+  }
+
+  const proposals = readPreviewProposals();
+  const source = proposals.find((proposal) => proposal.id === sourceProposalId);
+  if (!source) throw new Error("Source proposal not found");
+  if (!source.items.length) throw new Error("Source proposal must have at least one item to duplicate");
+
+  const copiedItems = source.items.map((item, index) => {
+    validateProposalItemInput({
+      brandId: item.brandId,
+      brandNameSnapshot: item.brandNameSnapshot,
+      optionGroup: item.optionGroup ?? undefined,
+      reference: item.reference,
+      description: item.description ?? undefined,
+      finish: item.finish ?? undefined,
+      quantity: item.quantity,
+      originalUnitPrice: item.originalUnitPrice ?? 0,
+      calculationRuleId: item.calculationRuleId,
+      calculationFactor: item.calculationFactor,
+      finalUnitPrice: item.finalUnitPrice,
+      lineTotal: item.lineTotal,
+      notes: item.notes ?? undefined,
+      sortOrder: item.sortOrder ?? index + 1,
+    });
+    return {
+      ...item,
+      id: index + 1,
+      proposalId: 0,
+      sortOrder: item.sortOrder ?? index + 1,
+    };
+  });
+  const id = nextPreviewId(proposals);
+  const proposalNumber = nextPreviewProposalNumber(proposals);
+  const proposalDate = new Date().toISOString().slice(0, 10);
+  const workspaceBasePath = inferPreviewWorkspaceBasePath(source.localFolderPath);
+  const localFolderPath = buildProposalFolderPath({
+    basePath: workspaceBasePath,
+    year: new Date(proposalDate).getFullYear(),
+    proposalNumber,
+    clientName: source.clientNameSnapshot ?? "client",
+    projectName: source.projectName ?? "project",
+  });
+  const duplicateNote = `Duplicada a partir da proposta ${source.proposalNumber}.`;
+  const proposal: ProposalDetail = {
+    ...source,
+    id,
+    proposalNumber,
+    title: `Copia de ${source.title}`,
+    proposalDate,
+    status: "draft",
+    localFolderPath,
+    totalAmount: calculateProposalTotal(copiedItems),
+    notes: source.notes?.trim() ? `${source.notes.trim()}\n${duplicateNote}` : duplicateNote,
+    items: copiedItems.map((item) => ({ ...item, proposalId: id })),
+  };
+  writePreviewProposals([...proposals, proposal]);
+  return proposal;
+}
+
 export function addProposalItem(
   proposalId: number,
   input: CreateProposalItemInput,
@@ -190,4 +256,21 @@ function writePreviewProposals(proposals: ProposalDetail[]): void {
 
 function nextPreviewId(proposals: ProposalDetail[]): number {
   return proposals.reduce((max, proposal) => Math.max(max, proposal.id), 0) + 1;
+}
+
+function nextPreviewProposalNumber(proposals: ProposalDetail[]): string {
+  const nextNumber = proposals.reduce((max, proposal) => {
+    const match = proposal.proposalNumber.match(/(\d+)$/);
+    return match ? Math.max(max, Number(match[1])) : max;
+  }, 0) + 1;
+  return `PREVIEW-${String(nextNumber).padStart(3, "0")}`;
+}
+
+function inferPreviewWorkspaceBasePath(localFolderPath: string | null): string {
+  if (!localFolderPath) return "C:/ProposalPromptStudio";
+  const normalized = localFolderPath.replace(/\\/g, "/");
+  const marker = "/proposals/";
+  const markerIndex = normalized.lastIndexOf(marker);
+  if (markerIndex <= 0) return "C:/ProposalPromptStudio";
+  return normalized.slice(0, markerIndex);
 }

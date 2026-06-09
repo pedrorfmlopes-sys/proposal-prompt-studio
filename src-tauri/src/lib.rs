@@ -22,6 +22,7 @@ pub fn run() {
             commands::get_pricing_rule_by_code,
             commands::create_proposal_folder_structure,
             proposal_commands::create_proposal,
+            proposal_commands::duplicate_proposal,
             proposal_commands::get_proposals,
             proposal_commands::get_proposal_by_id,
             proposal_commands::add_proposal_item,

@@ -18,6 +18,7 @@ import {
 import { suggestNextProposalNumber } from "../src/services/proposalNumberService";
 import {
   calculateProposalTotal,
+  duplicateProposal,
   validateCreateProposalInput,
 } from "../src/services/proposalService";
 import { generateStructuredPrompt } from "../src/services/promptGenerationService";
@@ -528,6 +529,52 @@ await assert.rejects(
 await assert.rejects(
   () => pickFinalDocumentFile(),
   /Esta acao so esta disponivel no runtime Tauri/,
+);
+
+localStorage.setItem(
+  "proposal-prompt-studio.preview.proposals",
+  JSON.stringify([promptProposal]),
+);
+localStorage.setItem(
+  "proposal-prompt-studio.preview.promptRuns",
+  JSON.stringify([{ id: 1, proposalId: 1, promptTitle: "Prompt", promptText: "Teste" }]),
+);
+localStorage.setItem(
+  FINAL_DOCUMENT_STORAGE_KEY,
+  JSON.stringify([{ id: 1, proposalId: 1, fileName: "Final.pdf", fileType: "pdf" }]),
+);
+const duplicatedPreviewProposal = await duplicateProposal(1);
+assert.notEqual(duplicatedPreviewProposal.id, promptProposal.id);
+assert.notEqual(duplicatedPreviewProposal.proposalNumber, promptProposal.proposalNumber);
+assert.equal(duplicatedPreviewProposal.status, "draft");
+assert.equal(duplicatedPreviewProposal.items.length, promptProposal.items.length);
+assert.deepEqual(
+  duplicatedPreviewProposal.items.map((item) => item.reference),
+  promptProposal.items.map((item) => item.reference),
+);
+assert.notEqual(duplicatedPreviewProposal.items[0], promptProposal.items[0]);
+assertMoney(duplicatedPreviewProposal.totalAmount, promptProposal.totalAmount);
+assert.match(duplicatedPreviewProposal.notes ?? "", /Duplicada a partir da proposta PROP-2026-001/);
+assert.equal(
+  JSON.parse(localStorage.getItem("proposal-prompt-studio.preview.promptRuns") ?? "[]").length,
+  1,
+);
+assert.equal(
+  JSON.parse(localStorage.getItem(FINAL_DOCUMENT_STORAGE_KEY) ?? "[]").length,
+  1,
+);
+localStorage.setItem(
+  "proposal-prompt-studio.preview.proposals",
+  JSON.stringify([
+    {
+      ...promptProposal,
+      items: [{ ...promptProposal.items[0], lineTotal: 1 }],
+    },
+  ]),
+);
+await assert.rejects(
+  () => duplicateProposal(1),
+  /Line total must match final unit price times quantity/,
 );
 
 console.log("Service tests passed.");

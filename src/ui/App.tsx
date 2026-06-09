@@ -12,6 +12,7 @@ import { suggestNextProposalNumber } from "../services/proposalNumberService";
 import {
   calculateProposalTotal,
   createProposal,
+  duplicateProposal,
   getProposalById,
   getProposals,
 } from "../services/proposalService";
@@ -156,7 +157,14 @@ export function App() {
       {view === "list" && <ProposalListView proposals={proposals} onOpen={openDetail} />}
 
       {view === "detail" && selectedProposal && (
-        <ProposalDetailView proposal={selectedProposal} />
+        <ProposalDetailView
+          proposal={selectedProposal}
+          onDuplicated={(proposal) => {
+            setSelectedProposal(proposal);
+            refreshProposals();
+            setView("detail");
+          }}
+        />
       )}
     </main>
   );
@@ -446,7 +454,13 @@ function ProposalListView({
   );
 }
 
-function ProposalDetailView({ proposal }: { proposal: ProposalDetail }) {
+function ProposalDetailView({
+  proposal,
+  onDuplicated,
+}: {
+  proposal: ProposalDetail;
+  onDuplicated: (proposal: ProposalDetail) => void;
+}) {
   const [promptRuns, setPromptRuns] = useState<PromptRunDetail[]>([]);
   const [visiblePrompt, setVisiblePrompt] = useState<PromptRunDetail | null>(null);
   const [finalDocuments, setFinalDocuments] = useState<FinalDocument[]>([]);
@@ -610,6 +624,22 @@ function ProposalDetailView({ proposal }: { proposal: ProposalDetail }) {
       });
   }
 
+  function duplicateVisibleProposal() {
+    const confirmed = window.confirm(
+      "Pretendes duplicar esta proposta? A nova proposta ficara em estado draft e nao copiara prompts nem documentos finais.",
+    );
+    if (!confirmed) return;
+
+    duplicateProposal(proposal.id)
+      .then((duplicatedProposal) => {
+        setMessage(`Proposta duplicada com sucesso: ${duplicatedProposal.proposalNumber}`);
+        onDuplicated(duplicatedProposal);
+      })
+      .catch((error: unknown) => {
+        setMessage(error instanceof Error ? error.message : "Nao foi possivel duplicar a proposta.");
+      });
+  }
+
   return (
     <section className="workspace">
       <header><p className="eyebrow">Detalhe</p><h1>{proposal.proposalNumber}</h1></header>
@@ -622,7 +652,10 @@ function ProposalDetailView({ proposal }: { proposal: ProposalDetail }) {
       <p><strong>Layout:</strong> {proposal.layoutName ?? proposal.layoutId ?? "-"}</p>
       <p><strong>Regra comercial:</strong> {proposal.pricingRuleName ?? proposal.pricingRuleId ?? "-"}</p>
       <p><strong>Pasta local:</strong> {proposal.localFolderPath ?? "-"}</p>
-      <button onClick={openProposalLocalFolder}>Abrir pasta da proposta</button>
+      <div className="actions">
+        <button onClick={openProposalLocalFolder}>Abrir pasta da proposta</button>
+        <button onClick={duplicateVisibleProposal}>Duplicar proposta</button>
+      </div>
       <ItemsTable items={proposal.items} />
       <section className="sectionBand">
         <h2>Prompts geradas</h2>

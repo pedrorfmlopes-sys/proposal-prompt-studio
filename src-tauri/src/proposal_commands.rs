@@ -72,6 +72,87 @@ pub fn create_proposal(app: AppHandle, input: CreateProposalInput) -> Result<Pro
 }
 
 #[tauri::command]
+pub fn duplicate_proposal(app: AppHandle, source_proposal_id: i64) -> Result<ProposalDetail, String> {
+    if source_proposal_id <= 0 {
+        return Err("source_proposal_id must be greater than zero".to_string());
+    }
+
+    let source = get_proposal_by_id(app.clone(), source_proposal_id)?
+        .ok_or_else(|| "Source proposal not found".to_string())?;
+    if source.items.is_empty() {
+        return Err("Source proposal must have at least one item to duplicate".to_string());
+    }
+
+    let mut duplicate_items = Vec::with_capacity(source.items.len());
+    for item in &source.items {
+        let input = proposal_item_to_create_input(item);
+        validate_item_input(&input)?;
+        duplicate_items.push(input);
+    }
+
+    let mut conn = db::open_initialized(&app)?;
+    let tx = conn.transaction().map_err(|error| error.to_string())?;
+    let proposal_number = next_proposal_number(&tx).map_err(|error| error.to_string())?;
+    let year = source.proposal_date.chars().take(4).collect::<String>();
+    let folder_request = ProposalFolderRequest {
+        base_path: infer_base_path(source.local_folder_path.as_deref())?,
+        year,
+        proposal_number: proposal_number.clone(),
+        client_name: source.client_name_snapshot.clone().unwrap_or_default(),
+        project_name: source.project_name.clone().unwrap_or_default(),
+    };
+    let local_folder_path = folder_service::build_proposal_folder_path(&folder_request)
+        .to_string_lossy()
+        .to_string();
+    folder_service::create_proposal_folder_structure(folder_request)?;
+    let notes = duplicate_notes(
+        source.notes.as_deref(),
+        &source.proposal_number,
+    );
+    let total_amount = duplicate_items.iter().map(|item| item.line_total).sum::<f64>();
+
+    tx.execute(
+        "INSERT INTO proposals (
+            proposal_number, title, client_name_snapshot, project_name,
+            project_location, proposal_date, language, currency, vat_mode,
+            validity_text, commercial_conditions, proposal_type, layout_id,
+            pricing_rule_id, status, local_folder_path, total_amount, notes
+         )
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14,
+                 'draft', ?15, ?16, ?17)",
+        params![
+            proposal_number,
+            format!("Copia de {}", source.title),
+            source.client_name_snapshot,
+            source.project_name,
+            source.project_location,
+            source.proposal_date,
+            source.language,
+            source.currency,
+            source.vat_mode,
+            source.validity_text,
+            source.commercial_conditions,
+            source.proposal_type,
+            source.layout_id,
+            source.pricing_rule_id,
+            local_folder_path,
+            total_amount,
+            notes,
+        ],
+    )
+    .map_err(|error| error.to_string())?;
+
+    let proposal_id = tx.last_insert_rowid();
+    for item in &duplicate_items {
+        insert_proposal_item(&tx, proposal_id, item).map_err(|error| error.to_string())?;
+    }
+    increment_next_number(&tx).map_err(|error| error.to_string())?;
+    tx.commit().map_err(|error| error.to_string())?;
+
+    get_proposal_by_id(app, proposal_id)?.ok_or_else(|| "Duplicated proposal not found".to_string())
+}
+
+#[tauri::command]
 pub fn get_proposals(app: AppHandle) -> Result<Vec<ProposalSummary>, String> {
     let conn = db::open_initialized(&app)?;
     let mut stmt = conn
@@ -252,6 +333,50 @@ fn update_total_from_items(conn: &Connection, proposal_id: i64) -> Result<f64> {
         params![total, proposal_id],
     )?;
     Ok(total)
+}
+
+fn proposal_item_to_create_input(item: &ProposalItem) -> CreateProposalItemInput {
+    CreateProposalItemInput {
+        brand_id: item.brand_id,
+        brand_name_snapshot: item.brand_name_snapshot.clone(),
+        option_group: item.option_group.clone(),
+        reference: item.reference.clone(),
+        description: item.description.clone(),
+        finish: item.finish.clone(),
+        quantity: item.quantity,
+        original_unit_price: item.original_unit_price.unwrap_or(0.0),
+        calculation_rule_id: item.calculation_rule_id,
+        calculation_factor: item.calculation_factor,
+        final_unit_price: item.final_unit_price,
+        line_total: item.line_total,
+        technical_sheet_url: None,
+        drawing2d_url: None,
+        model3d_url: None,
+        image_path: None,
+        notes: item.notes.clone(),
+        sort_order: item.sort_order,
+    }
+}
+
+fn duplicate_notes(existing_notes: Option<&str>, source_proposal_number: &str) -> String {
+    let duplicate_note = format!("Duplicada a partir da proposta {source_proposal_number}.");
+    match existing_notes {
+        Some(value) if !value.trim().is_empty() => format!("{}\n{}", value.trim(), duplicate_note),
+        _ => duplicate_note,
+    }
+}
+
+fn infer_base_path(local_folder_path: Option<&str>) -> Result<String, String> {
+    let value = local_folder_path
+        .filter(|path| !path.trim().is_empty())
+        .ok_or_else(|| "Source proposal local_folder_path is required".to_string())?;
+    let path = std::path::Path::new(value);
+    let proposals_dir = path
+        .parent()
+        .and_then(|year_dir| year_dir.parent())
+        .and_then(|proposals_dir| proposals_dir.parent())
+        .ok_or_else(|| "Could not infer base workspace path from source proposal".to_string())?;
+    Ok(proposals_dir.to_string_lossy().to_string())
 }
 
 fn validate_proposal_input(input: &CreateProposalInput) -> Result<(), String> {

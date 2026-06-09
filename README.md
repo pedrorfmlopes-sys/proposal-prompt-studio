@@ -173,6 +173,15 @@ proposal detail view. A document record can also be removed from the app.
 Removing a record does not delete the physical file from disk. Physical file
 deletion is intentionally left for a future phase, if it is ever needed.
 
+## Duplicate Proposals
+
+An existing proposal can be duplicated from the proposal detail view. The new
+proposal gets a fresh proposal number, starts as `draft`, copies the general
+proposal data and item lines, and creates a new local folder structure.
+
+Generated prompts, exported prompts, proposal files, and final document records
+are not copied. The duplicated proposal starts as a clean working version.
+
 ## Create The Local Database
 
 If `sqlite3` is installed, run:
