@@ -1,4 +1,4 @@
-import type { GeneratePromptResult, PromptRunDetail } from "../types";
+import type { GeneratePromptResult, PromptOutputMode, PromptRunDetail } from "../types";
 import { buildPromptTitle, generateStructuredPrompt } from "./promptGenerationService";
 import { getProposalById } from "./proposalService";
 import { callTauri, isTauriRuntime } from "./tauriClient";
@@ -7,10 +7,12 @@ export const PROMPT_RUN_STORAGE_KEY = "proposal-prompt-studio.preview.promptRuns
 
 export async function generateProposalPrompt(
   proposalId: number,
+  outputMode: PromptOutputMode = "chat_text",
 ): Promise<GeneratePromptResult> {
   if (isTauriRuntime()) {
     const promptRun = await callTauri<PromptRunDetail>("generate_proposal_prompt", {
       proposalId,
+      outputMode,
     });
     const proposal = await getProposalById(proposalId);
     return { promptRun, proposal };
@@ -22,7 +24,7 @@ export async function generateProposalPrompt(
     id: nextPromptId(),
     proposalId,
     promptTitle: buildPromptTitle(proposal),
-    promptText: generateStructuredPrompt(proposal),
+    promptText: generateStructuredPrompt(proposal, outputMode),
     promptFormat: "markdown",
     generatedAt: new Date().toISOString(),
     copiedAt: null,

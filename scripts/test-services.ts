@@ -23,6 +23,7 @@ import {
   updateProposal,
   updateProposalItem,
   validateCreateProposalInput,
+  validateProposalItemInput,
 } from "../src/services/proposalService";
 import { generateStructuredPrompt } from "../src/services/promptGenerationService";
 import {
@@ -225,6 +226,18 @@ assertMoney(workflowItem.lineTotal, 13545.4);
 const createItem = toCreateProposalItemInput(workflowItem, 1);
 assertMoney(calculateProposalTotal([createItem, { ...createItem, lineTotal: 10 }]), 13555.4);
 assert.throws(
+  () => toCreateProposalItemInput({ ...workflowItem, brandId: null }, 1),
+  /Marca do artigo obrigatoria/,
+);
+assert.throws(
+  () => validateProposalItemInput({ ...createItem, brandId: 0 }),
+  /Marca do artigo obrigatoria/,
+);
+assert.throws(
+  () => validateProposalItemInput({ ...createItem, brandNameSnapshot: "" }),
+  /Marca do artigo obrigatoria/,
+);
+assert.throws(
   () => toCreateProposalItemInput({ ...workflowItem, lineTotal: 1 }, 1),
   /Line total does not match/,
 );
@@ -343,6 +356,30 @@ const promptProposal: ProposalDetail = {
   ],
 };
 const prompt = generateStructuredPrompt(promptProposal);
+assert.throws(
+  () =>
+    generateStructuredPrompt({
+      ...promptProposal,
+      items: [{ ...promptProposal.items[0], brandId: null, brandNameSnapshot: "" }],
+    }),
+  /Existem artigos sem marca definida/,
+);
+assert.match(
+  generateStructuredPrompt(promptProposal, "chat_text"),
+  /Criar texto de proposta pronto a converter para documento comercial/,
+);
+assert.match(
+  generateStructuredPrompt(promptProposal, "pdf_file"),
+  /ficheiro PDF pronto para download/,
+);
+assert.match(
+  generateStructuredPrompt(promptProposal, "word_docx"),
+  /documento Word editavel|documento Word editável/,
+);
+assert.match(
+  generateStructuredPrompt(promptProposal, "word_and_pdf"),
+  /Word editavel .* PDF final|Word editável .* PDF final/,
+);
 const requiredPromptSections = [
   "# Objetivo",
   "# Contexto da proposta",

@@ -47,6 +47,10 @@ export function toCreateProposalItemInput(
   item: DraftProposalItem,
   sortOrder: number,
 ): CreateProposalItemInput {
+  if (!item.brandId || item.brandId <= 0 || !item.brandNameSnapshot.trim()) {
+    throw new Error("Marca do artigo obrigatoria");
+  }
+
   const validation = validateLineTotal(
     item.finalUnitPrice,
     item.quantity,

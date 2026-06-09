@@ -6,11 +6,16 @@ use crate::models::{PromptRun, ProposalDetail};
 use crate::proposal_commands;
 
 #[tauri::command]
-pub fn generate_proposal_prompt(app: AppHandle, proposal_id: i64) -> Result<PromptRun, String> {
+pub fn generate_proposal_prompt(
+    app: AppHandle,
+    proposal_id: i64,
+    output_mode: Option<String>,
+) -> Result<PromptRun, String> {
     let proposal = proposal_commands::get_proposal_by_id(app.clone(), proposal_id)?
         .ok_or_else(|| "Proposal not found".to_string())?;
+    validate_prompt_brands(&proposal)?;
     let prompt_title = build_prompt_title(&proposal);
-    let prompt_text = build_prompt_text(&proposal);
+    let prompt_text = build_prompt_text(&proposal, output_mode.as_deref().unwrap_or("chat_text"));
     let conn = db::open_initialized(&app)?;
 
     conn.execute(
@@ -114,8 +119,9 @@ fn build_prompt_title(proposal: &ProposalDetail) -> String {
     )
 }
 
-fn build_prompt_text(proposal: &ProposalDetail) -> String {
+fn build_prompt_text(proposal: &ProposalDetail, output_mode: &str) -> String {
     let subtotal = proposal.items.iter().map(|item| item.line_total).sum::<f64>();
+    let output_instruction = prompt_output_instruction(output_mode);
     let total_status = if (subtotal - proposal.total_amount).abs() <= 0.01 {
         "OK"
     } else {
@@ -160,7 +166,7 @@ fn build_prompt_text(proposal: &ProposalDetail) -> String {
         .collect::<Vec<_>>()
         .join("\n");
 
-    format!(
+    let prompt = format!(
         "# Objetivo\n\nCriar uma proposta comercial/técnica em português de Portugal, com estrutura clara, tabelas organizadas e valores devidamente validados.\n\n# Contexto da proposta\n\n- Número: {}\n- Título: {}\n- Tipo: {}\n- Data: {}\n- Idioma: {}\n- Moeda: {}\n- Modo IVA: {}\n- Estado: {}\n\n# Dados do cliente e projeto\n\n- Cliente: {}\n- Projeto: {}\n- Local: {}\n- Validade: {}\n- Notas: {}\n\n# Layout a seguir\n\n- Layout: {}\n- Layout ID: {}\n- Tipo de proposta: {}\n\nSeguir a estrutura do layout selecionado e organizar a proposta por marcas/opções quando aplicável.\n\n# Condições comerciais\n\n{}\n\n# Regras de cálculo aplicadas\n\n- Regra: {}\n- Código: {}\n- ID: {}\n- Fator: {}\n- roundingMode: {}\n\nNão confundir multiplicar por 1,15 com dividir por 0,85. A regra de divisão por 0,85 usa arredondamento comercial para cima ao cêntimo quando o roundingMode é ceil_2_decimals.\n\n# Artigos da proposta\n\nMarca | Grupo/Opção | Referência | Descrição | Acabamento | Quantidade | Preço original | Regra/Fator | Preço final | Total da linha | Observações\n--- | --- | --- | --- | --- | ---: | ---: | --- | ---: | ---: | ---\n{}\n\n# Totais e validações\n\n- Subtotal calculado: {:.2}\n- Total da proposta: {:.2}\n- Validação do total geral: {}\n\nValidações por linha:\n\n{}\n\nConfirmar novamente que:\n\n- line_total = final_unit_price × quantity\n- proposal_total = soma dos line_total\n\n# Instruções de preservação de layout\n\n- Não alterar a estrutura visual definida.\n- Não redesenhar tabelas sem necessidade.\n- Manter a organização por marca/opção.\n- Não inventar produtos, links, imagens ou fichas técnicas.\n- Não alterar preços, quantidades ou totais.\n\n# Notas obrigatórias\n\n- Aos valores apresentados acresce IVA a taxa legal em vigor.\n- Fichas técnicas, imagens e links devem ser confirmados por referência oficial.\n\n# Resultado pretendido\n\nCriar texto de proposta pronto a converter para documento comercial. Usar português de Portugal, tom profissional, claro e comercial, e incluir tabelas organizadas.\n\n# Validações antes de terminar\n\n1. Todos os artigos estão incluídos.\n2. Todos os preços finais respeitam a regra definida.\n3. Todos os totais de linha estão corretos.\n4. O total geral corresponde à soma das linhas.\n5. A nota de IVA está presente.\n6. Não foram inventadas referências, imagens ou links.\n7. O layout e estrutura foram respeitados.",
         proposal.proposal_number,
         proposal.title,
@@ -189,6 +195,10 @@ fn build_prompt_text(proposal: &ProposalDetail) -> String {
         proposal.total_amount,
         total_status,
         line_validations
+    );
+    prompt.replace(
+        "Criar texto de proposta pronto a converter para documento comercial. Usar português de Portugal, tom profissional, claro e comercial, e incluir tabelas organizadas.",
+        output_instruction,
     )
 }
 
@@ -196,5 +206,30 @@ fn format_rule(factor: Option<f64>) -> String {
     match factor {
         Some(value) if value != 0.0 => format!("÷ {}", value),
         _ => "-".to_string(),
+    }
+}
+
+fn validate_prompt_brands(proposal: &ProposalDetail) -> Result<(), String> {
+    let has_invalid_brand = proposal.items.iter().any(|item| {
+        item.brand_id.unwrap_or(0) <= 0
+            || item
+                .brand_name_snapshot
+                .as_deref()
+                .unwrap_or("")
+                .trim()
+                .is_empty()
+    });
+    if has_invalid_brand {
+        return Err("Existem artigos sem marca definida. Corrige antes de gerar a prompt.".to_string());
+    }
+    Ok(())
+}
+
+fn prompt_output_instruction(output_mode: &str) -> &'static str {
+    match output_mode {
+        "word_docx" => "Criar a proposta final como documento Word editável (.docx), pronto para download. O documento deve incluir capa simples, dados da proposta, tabelas de artigos, resumo financeiro, validações e notas finais. Manter português de Portugal e tom profissional.",
+        "pdf_file" => "Criar a proposta final como ficheiro PDF pronto para download. O PDF deve incluir capa simples, dados da proposta, tabelas de artigos, resumo financeiro, validações e notas finais. Manter português de Portugal, tom profissional e organização comercial.",
+        "word_and_pdf" => "Criar a proposta final em dois ficheiros descarregáveis: Word editável (.docx) e PDF final. Ambos devem manter a mesma estrutura, tabelas, valores, validações e notas comerciais.",
+        _ => "Criar texto de proposta pronto a converter para documento comercial. Usar português de Portugal, tom profissional, claro e comercial, e incluir tabelas organizadas.",
     }
 }

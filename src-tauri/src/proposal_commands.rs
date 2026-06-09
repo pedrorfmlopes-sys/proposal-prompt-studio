@@ -613,6 +613,16 @@ fn validate_update_proposal_input(input: &UpdateProposalInput) -> Result<(), Str
 }
 
 fn validate_item_input(item: &CreateProposalItemInput) -> Result<(), String> {
+    if item.brand_id.unwrap_or(0) <= 0
+        || item
+            .brand_name_snapshot
+            .as_deref()
+            .unwrap_or("")
+            .trim()
+            .is_empty()
+    {
+        return Err("Item brand is required".to_string());
+    }
     if item.reference.trim().is_empty() {
         return Err("Item reference is required".to_string());
     }

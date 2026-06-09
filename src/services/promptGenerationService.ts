@@ -1,4 +1,4 @@
-import type { ProposalDetail } from "../types";
+import type { PromptOutputMode, ProposalDetail } from "../types";
 import { calculateSubtotal, validateLineTotal } from "./lineTotalService";
 
 const IVA_NOTE = "Aos valores apresentados acresce IVA a taxa legal em vigor.";
@@ -14,9 +14,14 @@ export function buildPromptTitle(proposal: ProposalDetail): string {
     .join(" - ");
 }
 
-export function generateStructuredPrompt(proposal: ProposalDetail): string {
+export function generateStructuredPrompt(
+  proposal: ProposalDetail,
+  outputMode: PromptOutputMode = "chat_text",
+): string {
+  validatePromptBrands(proposal);
   const subtotal = calculateSubtotal(proposal.items);
   const rulesText = buildRulesText(proposal);
+  const outputInstruction = promptOutputInstruction(outputMode);
   const itemRows = proposal.items.map((item) => {
     const ruleText = formatRule(item.calculationFactor);
     return [
@@ -122,7 +127,7 @@ Confirmar novamente que:
 
 # Resultado pretendido
 
-Criar texto de proposta pronto a converter para documento comercial. Usar português de Portugal, tom profissional, claro e comercial, e incluir tabelas organizadas.
+${outputInstruction}
 
 # Validações antes de terminar
 
@@ -133,6 +138,30 @@ Criar texto de proposta pronto a converter para documento comercial. Usar portug
 5. A nota de IVA está presente.
 6. Não foram inventadas referências, imagens ou links.
 7. O layout e estrutura foram respeitados.`;
+}
+
+export function validatePromptBrands(proposal: ProposalDetail): void {
+  const hasInvalidBrand = proposal.items.some(
+    (item) => !item.brandId || item.brandId <= 0 || !item.brandNameSnapshot?.trim(),
+  );
+  if (hasInvalidBrand) {
+    throw new Error("Existem artigos sem marca definida. Corrige antes de gerar a prompt.");
+  }
+}
+
+export function promptOutputInstruction(outputMode: PromptOutputMode): string {
+  switch (outputMode) {
+    case "chat_text":
+      return "Criar texto de proposta pronto a converter para documento comercial. Usar português de Portugal, tom profissional, claro e comercial, e incluir tabelas organizadas.";
+    case "word_docx":
+      return "Criar a proposta final como documento Word editável (.docx), pronto para download. O documento deve incluir capa simples, dados da proposta, tabelas de artigos, resumo financeiro, validações e notas finais. Manter português de Portugal e tom profissional.";
+    case "pdf_file":
+      return "Criar a proposta final como ficheiro PDF pronto para download. O PDF deve incluir capa simples, dados da proposta, tabelas de artigos, resumo financeiro, validações e notas finais. Manter português de Portugal, tom profissional e organização comercial.";
+    case "word_and_pdf":
+      return "Criar a proposta final em dois ficheiros descarregáveis: Word editável (.docx) e PDF final. Ambos devem manter a mesma estrutura, tabelas, valores, validações e notas comerciais.";
+    default:
+      return "Criar texto de proposta pronto a converter para documento comercial. Usar português de Portugal, tom profissional, claro e comercial, e incluir tabelas organizadas.";
+  }
 }
 
 function buildRulesText(proposal: ProposalDetail): string {

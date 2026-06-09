@@ -294,6 +294,9 @@ export function validateUpdateProposalInput(input: UpdateProposalInput): void {
 }
 
 export function validateProposalItemInput(item: CreateProposalItemInput): void {
+  if (!item.brandId || item.brandId <= 0 || !item.brandNameSnapshot?.trim()) {
+    throw new Error("Marca do artigo obrigatoria");
+  }
   if (!item.reference.trim()) throw new Error("Item reference is required");
   if (item.quantity <= 0) throw new Error("Item quantity must be greater than zero");
   if (item.originalUnitPrice < 0) throw new Error("Original unit price cannot be negative");

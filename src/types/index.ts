@@ -87,6 +87,8 @@ export type ProposalType = "technical" | "update" | "alternatives" | string;
 
 export type VatMode = "sem_iva" | "com_iva" | string;
 
+export type PromptOutputMode = "chat_text" | "word_docx" | "pdf_file" | "word_and_pdf";
+
 export interface ProposalSummary {
   id: number;
   proposalNumber: string;

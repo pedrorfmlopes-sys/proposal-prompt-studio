@@ -52,6 +52,7 @@ import type {
   ProposalDetail,
   ProposalItem,
   ProposalSummary,
+  PromptOutputMode,
   PromptRunDetail,
   UpdateProposalInput,
 } from "../types";
@@ -489,6 +490,7 @@ function ProposalDetailView({
   const [finalDocumentVersion, setFinalDocumentVersion] = useState("");
   const [editingFinalDocumentId, setEditingFinalDocumentId] = useState<number | null>(null);
   const [message, setMessage] = useState("");
+  const [promptOutputMode, setPromptOutputMode] = useState<PromptOutputMode>("chat_text");
   const [isEditingProposal, setIsEditingProposal] = useState(false);
   const [proposalForm, setProposalForm] = useState(() => proposalToForm(proposal));
   const [editingItem, setEditingItem] = useState<ProposalItem | null>(null);
@@ -565,6 +567,10 @@ function ProposalDetailView({
       return;
     }
     const brand = brands.find((item) => item.id === Number(itemForm.brandId));
+    if (!brand) {
+      setMessage("Seleciona a marca do artigo antes de guardar a linha.");
+      return;
+    }
     const originalUnitPrice = Number(itemForm.originalUnitPrice);
     const quantity = Number(itemForm.quantity);
     const finalUnitPrice = calculateFinalUnitPrice({
@@ -582,7 +588,7 @@ function ProposalDetailView({
 
     updateProposalItem(editingItem.id, {
       brandId: itemForm.brandId ? Number(itemForm.brandId) : null,
-      brandNameSnapshot: brand?.displayName ?? brand?.name ?? itemForm.brandNameSnapshot,
+      brandNameSnapshot: brand.displayName ?? brand.name,
       optionGroup: itemForm.optionGroup,
       reference: itemForm.reference,
       description: itemForm.description,
@@ -631,7 +637,7 @@ function ProposalDetailView({
   }
 
   function generatePrompt() {
-    generateProposalPrompt(proposal.id)
+    generateProposalPrompt(proposal.id, promptOutputMode)
       .then(({ promptRun }) => {
         setVisiblePrompt(promptRun);
         setMessage("Prompt gerada e guardada.");
@@ -863,6 +869,20 @@ function ProposalDetailView({
       </section>
       <section className="sectionBand">
         <h2>Prompts geradas</h2>
+        <div className="formGrid">
+          <label>
+            Resultado pretendido
+            <select
+              value={promptOutputMode}
+              onChange={(event) => setPromptOutputMode(event.target.value as PromptOutputMode)}
+            >
+              <option value="chat_text">Texto no chat</option>
+              <option value="word_docx">Documento Word</option>
+              <option value="pdf_file">PDF final</option>
+              <option value="word_and_pdf">Word + PDF</option>
+            </select>
+          </label>
+        </div>
         <div className="actions">
           <button onClick={generatePrompt}>Gerar prompt</button>
           <button onClick={() => getLatestPromptRun(proposal.id).then(setVisiblePrompt)}>

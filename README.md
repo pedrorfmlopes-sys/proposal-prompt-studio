@@ -122,6 +122,11 @@ Prompt generation exists in both TypeScript preview mode and Rust/Tauri runtime.
 Both generators must keep the same section order, validation rules, commercial
 rounding language, and "do not invent data" instructions.
 
+Each item must have an explicitly selected brand before a prompt can be
+generated. The prompt output mode can request chat text, Word, PDF, or Word +
+PDF. The PDF/Word modes instruct ChatGPT to create files when that capability
+is available; otherwise, the receiving chat may return only the proposal text.
+
 ## Export Prompts
 
 In a proposal detail view, generate or select a visible prompt and use:
