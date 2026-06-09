@@ -2,7 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 
 export function callTauri<T>(command: string, args?: Record<string, unknown>) {
   if (!isTauriRuntime()) {
-    throw new Error("Tauri runtime is not available");
+    return Promise.reject(new Error("Tauri runtime is not available"));
   }
 
   return invoke<T>(command, args);

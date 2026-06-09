@@ -94,34 +94,6 @@ pub fn export_latest_prompt_run(
     export_prompt_run(app, prompt_run_id, format)
 }
 
-#[tauri::command]
-pub fn get_prompt_export_path(
-    app: AppHandle,
-    prompt_run_id: i64,
-    format: String,
-) -> Result<String, String> {
-    if prompt_run_id <= 0 {
-        return Err("prompt_run_id must be greater than zero".to_string());
-    }
-    validate_format(&format)?;
-    let conn = db::open_initialized(&app)?;
-    let prompt_run = query_prompt_run(&conn, prompt_run_id)
-        .map_err(|error| error.to_string())?
-        .ok_or_else(|| "Prompt run not found".to_string())?;
-    let proposal = query_prompt_proposal(&conn, prompt_run.proposal_id)
-        .map_err(|error| error.to_string())?
-        .ok_or_else(|| "Proposal not found".to_string())?;
-    let local_folder_path = proposal
-        .local_folder_path
-        .filter(|value| !value.trim().is_empty())
-        .ok_or_else(|| "Proposal local_folder_path is required".to_string())?;
-    Ok(PathBuf::from(local_folder_path)
-        .join("prompts")
-        .join(build_file_name(&prompt_run.prompt_title, &format))
-        .to_string_lossy()
-        .to_string())
-}
-
 struct PromptProposal {
     local_folder_path: Option<String>,
 }

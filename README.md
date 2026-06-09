@@ -74,8 +74,24 @@ creation are handled by the Tauri runtime.
 For the desktop Tauri app, after installing Rust:
 
 ```powershell
-npm run tauri:dev
+npm.cmd run tauri:dev
 ```
+
+## Tauri Local Setup And Smoke Test
+
+Use `npm.cmd` on Windows to avoid PowerShell script execution blocking:
+
+```powershell
+rustc --version
+cargo --version
+npm.cmd install
+npm.cmd run tauri:dev
+```
+
+The desktop app uses a local SQLite database in the app data folder. Exported
+prompt files are written to each proposal's local folder, under `prompts/`.
+OneDrive can store proposal files, configuration packages, and exports, but the
+active SQLite database should stay local.
 
 ## Proposal Workflow
 
@@ -113,9 +129,10 @@ In a proposal detail view, generate or select a visible prompt and use:
 - `Exportar .md`
 - `Exportar .txt`
 
-Desktop/Tauri mode writes the file to the proposal folder under `prompts/` and
-updates `prompt_runs.exported_path`. Web/Vite mode does not write to disk; it
-returns a preview message because real export depends on the Tauri runtime.
+Desktop/Tauri mode writes the file to the proposal folder under `prompts/`,
+returns the real exported path from the write operation, and updates
+`prompt_runs.exported_path`. Web/Vite mode does not write to disk; it returns a
+preview message because real export depends on the Tauri runtime.
 
 ## Create The Local Database
 

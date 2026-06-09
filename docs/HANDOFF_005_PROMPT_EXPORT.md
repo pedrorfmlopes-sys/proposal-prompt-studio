@@ -23,7 +23,6 @@ preview keeps a no-disk fallback message.
 
 - `export_prompt_run(promptRunId, format)`
 - `export_latest_prompt_run(proposalId, format)`
-- `get_prompt_export_path(promptRunId, format)`
 
 The backend validates prompt id, proposal id where applicable, format,
 existence of prompt/proposal, non-empty prompt text, and populated
@@ -91,3 +90,36 @@ format-to-extension mapping, and invalid format errors.
 Fase 006 should add upload/registration of final proposal documents, stored
 under each proposal's `final-documents/` folder and tracked in
 `final_documents`.
+
+## Pos-teste Tauri Real
+
+The first real desktop smoke test found that the new proposal form still opened
+with demo values. Those defaults were removed so client, project, location,
+reference, description, finish, and notes start empty. Quantity now starts at
+`1`, original price starts at `0`, and brand selection starts at `Selecionar
+marca`.
+
+Frontend validation now blocks adding an item without a brand, reference,
+description, positive quantity, non-negative original price, and selected
+commercial rule. A dedicated `Carregar exemplo FIMA` button can load a coherent
+test line with `FIMA Carlo Frattini` and reference `F3121WLX8CR`; this example
+is never preloaded automatically.
+
+`get_prompt_export_path` was removed from the registered Tauri commands because
+it predicted a timestamped file path that could diverge from the real export.
+The UI now relies only on the path returned by `export_prompt_run` or
+`export_latest_prompt_run` after the file has actually been written.
+
+`src-tauri/Cargo.lock` and generated Tauri icons under `src-tauri/icons/` are
+kept in source control for reproducible desktop builds. The source icon was
+moved to `assets/app-icon.png`. `src-tauri/gen/` contains generated schema files
+and is ignored.
+
+Post-test validation commands:
+
+```powershell
+python scripts/validate-sqlite.py
+npm.cmd run test:services
+npm.cmd run build
+npm.cmd run tauri:dev
+```

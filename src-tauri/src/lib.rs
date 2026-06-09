@@ -30,7 +30,6 @@ pub fn run() {
             prompt_commands::get_prompt_run_by_id,
             prompt_export_commands::export_prompt_run,
             prompt_export_commands::export_latest_prompt_run,
-            prompt_export_commands::get_prompt_export_path,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Proposal Prompt Studio");

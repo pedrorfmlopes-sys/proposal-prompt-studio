@@ -220,9 +220,9 @@ function NewProposalView({
     "C:/ProposalPromptStudio";
 
   const [proposalNumber, setProposalNumber] = useState(() => suggestNextProposalNumber(settings));
-  const [client, setClient] = useState("Hotelaria Lisboa");
-  const [project, setProject] = useState("Projeto Hotelaria Lisboa");
-  const [location, setLocation] = useState("Lisboa");
+  const [client, setClient] = useState("");
+  const [project, setProject] = useState("");
+  const [location, setLocation] = useState("");
   const [proposalType, setProposalType] = useState("technical");
   const [layoutId, setLayoutId] = useState(defaultLayout?.id ?? 0);
   const [pricingRuleId, setPricingRuleId] = useState(defaultRule?.id ?? 0);
@@ -232,13 +232,13 @@ function NewProposalView({
   const [items, setItems] = useState<DraftProposalItem[]>([]);
   const [message, setMessage] = useState("");
   const [draftItem, setDraftItem] = useState({
-    brandId: brands[0]?.id ?? 0,
+    brandId: 0,
     optionGroup: "",
-    reference: "F3121WLX8CR",
-    description: "Artigo de teste",
-    finish: "Cromado",
-    quantity: 220,
-    originalUnitPrice: 52.33,
+    reference: "",
+    description: "",
+    finish: "",
+    quantity: 1,
+    originalUnitPrice: 0,
     notes: "",
   });
 
@@ -246,11 +246,27 @@ function NewProposalView({
     if (settings.length) setProposalNumber(suggestNextProposalNumber(settings));
   }, [settings]);
 
+  useEffect(() => {
+    if (!layoutId && defaultLayout) setLayoutId(defaultLayout.id);
+  }, [defaultLayout, layoutId]);
+
+  useEffect(() => {
+    if (!pricingRuleId && defaultRule) setPricingRuleId(defaultRule.id);
+  }, [defaultRule, pricingRuleId]);
+
   const selectedRule = pricingRules.find((rule) => rule.id === pricingRuleId) ?? defaultRule;
   const subtotal = calculateProposalTotal(items);
 
   function addItem() {
-    if (!selectedRule) return;
+    const validationMessage = validateDraftItem();
+    if (validationMessage) {
+      setMessage(validationMessage);
+      return;
+    }
+    if (!selectedRule) {
+      setMessage("Seleciona uma regra comercial antes de adicionar a linha.");
+      return;
+    }
     const brand = brands.find((item) => item.id === draftItem.brandId);
     const item = calculateProposalItem(
       {
@@ -272,6 +288,40 @@ function NewProposalView({
     );
     setItems((current) => [...current, item]);
     setMessage("Linha adicionada e validada.");
+  }
+
+  function validateDraftItem(): string {
+    if (!draftItem.brandId) return "Seleciona uma marca antes de adicionar a linha.";
+    if (!draftItem.reference.trim()) return "Indica a referencia do artigo.";
+    if (!draftItem.description.trim()) return "Indica a descricao do artigo.";
+    if (Number(draftItem.quantity) <= 0) return "A quantidade deve ser superior a zero.";
+    if (Number(draftItem.originalUnitPrice) < 0) return "O preco original nao pode ser negativo.";
+    if (!selectedRule) return "Seleciona uma regra comercial antes de adicionar a linha.";
+    return "";
+  }
+
+  function loadFimaExample() {
+    const fimaBrand = brands.find((brand) => {
+      const name = `${brand.displayName ?? ""} ${brand.name}`.toLowerCase();
+      return name.includes("fima");
+    });
+    const divideRule = pricingRules.find((rule) => rule.code === "divide_by_0_85") ?? defaultRule;
+    if (!fimaBrand || !divideRule) {
+      setMessage("Nao foi possivel carregar o exemplo FIMA porque faltam marca ou regra comercial.");
+      return;
+    }
+    setPricingRuleId(divideRule.id);
+    setDraftItem({
+      brandId: fimaBrand.id,
+      optionGroup: "",
+      reference: "F3121WLX8CR",
+      description: "Misturadora",
+      finish: "Cromado",
+      quantity: 220,
+      originalUnitPrice: 52.33,
+      notes: "",
+    });
+    setMessage("Exemplo FIMA carregado. Revê os dados antes de adicionar a linha.");
   }
 
   function saveProposal() {
@@ -328,7 +378,7 @@ function NewProposalView({
       <section className="sectionBand">
         <h2>Artigos</h2>
         <div className="formGrid">
-          <label>Marca<select value={draftItem.brandId} onChange={(event) => setDraftItem({ ...draftItem, brandId: Number(event.target.value) })}>{brands.map((brand) => <option key={brand.id} value={brand.id}>{brand.displayName ?? brand.name}</option>)}</select></label>
+          <label>Marca<select value={draftItem.brandId} onChange={(event) => setDraftItem({ ...draftItem, brandId: Number(event.target.value) })}><option value={0}>Selecionar marca</option>{brands.map((brand) => <option key={brand.id} value={brand.id}>{brand.displayName ?? brand.name}</option>)}</select></label>
           <label>Grupo/opção<input value={draftItem.optionGroup} onChange={(event) => setDraftItem({ ...draftItem, optionGroup: event.target.value })} /></label>
           <label>Referência<input value={draftItem.reference} onChange={(event) => setDraftItem({ ...draftItem, reference: event.target.value })} /></label>
           <label>Descrição<input value={draftItem.description} onChange={(event) => setDraftItem({ ...draftItem, description: event.target.value })} /></label>
@@ -337,7 +387,10 @@ function NewProposalView({
           <label>Preço original<input type="number" step="0.01" value={draftItem.originalUnitPrice} onChange={(event) => setDraftItem({ ...draftItem, originalUnitPrice: Number(event.target.value) })} /></label>
           <label>Observações<input value={draftItem.notes} onChange={(event) => setDraftItem({ ...draftItem, notes: event.target.value })} /></label>
         </div>
-        <button onClick={addItem}>Adicionar linha</button>
+        <div className="actions">
+          <button onClick={addItem}>Adicionar linha</button>
+          <button onClick={loadFimaExample}>Carregar exemplo FIMA</button>
+        </div>
       </section>
 
       <ItemsTable items={items} />
