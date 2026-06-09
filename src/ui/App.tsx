@@ -23,6 +23,10 @@ import {
   getPromptRuns,
 } from "../services/promptRunService";
 import { exportPromptRun } from "../services/promptExportService";
+import {
+  getFinalDocuments,
+  registerFinalDocument,
+} from "../services/finalDocumentService";
 import { getAllSettings } from "../services/settingsService";
 import type {
   AppSetting,
@@ -31,6 +35,7 @@ import type {
   DashboardSummary,
   Layout,
   PricingRule,
+  FinalDocument,
   ProposalDetail,
   ProposalSummary,
   PromptRunDetail,
@@ -436,6 +441,9 @@ function ProposalListView({
 function ProposalDetailView({ proposal }: { proposal: ProposalDetail }) {
   const [promptRuns, setPromptRuns] = useState<PromptRunDetail[]>([]);
   const [visiblePrompt, setVisiblePrompt] = useState<PromptRunDetail | null>(null);
+  const [finalDocuments, setFinalDocuments] = useState<FinalDocument[]>([]);
+  const [finalDocumentPath, setFinalDocumentPath] = useState("");
+  const [finalDocumentVersion, setFinalDocumentVersion] = useState("");
   const [message, setMessage] = useState("");
 
   const refreshPrompts = useCallback(() => {
@@ -446,6 +454,18 @@ function ProposalDetailView({ proposal }: { proposal: ProposalDetail }) {
   useEffect(() => {
     refreshPrompts();
   }, [refreshPrompts]);
+
+  const refreshFinalDocuments = useCallback(() => {
+    getFinalDocuments(proposal.id)
+      .then(setFinalDocuments)
+      .catch((error: unknown) => {
+        setMessage(error instanceof Error ? error.message : "Erro ao ler documentos finais.");
+      });
+  }, [proposal.id]);
+
+  useEffect(() => {
+    refreshFinalDocuments();
+  }, [refreshFinalDocuments]);
 
   function generatePrompt() {
     generateProposalPrompt(proposal.id)
@@ -476,6 +496,23 @@ function ProposalDetailView({ proposal }: { proposal: ProposalDetail }) {
       })
       .catch((error: unknown) => {
         setMessage(error instanceof Error ? error.message : "Erro ao exportar prompt.");
+      });
+  }
+
+  function registerVisibleFinalDocument() {
+    registerFinalDocument({
+      proposalId: proposal.id,
+      sourceFilePath: finalDocumentPath,
+      versionLabel: finalDocumentVersion,
+    })
+      .then((document) => {
+        setMessage(`Documento final registado: ${document.localPath ?? document.fileName}`);
+        setFinalDocumentPath("");
+        setFinalDocumentVersion("");
+        refreshFinalDocuments();
+      })
+      .catch((error: unknown) => {
+        setMessage(error instanceof Error ? error.message : "Erro ao registar documento final.");
       });
   }
 
@@ -521,6 +558,30 @@ function ProposalDetailView({ proposal }: { proposal: ProposalDetail }) {
             Prompt gerada em {visiblePrompt.generatedAt}
             <textarea readOnly className="promptText" value={visiblePrompt.promptText} />
           </label>
+        )}
+      </section>
+      <section className="sectionBand">
+        <h2>Documentos finais</h2>
+        <div className="formGrid">
+          <label>Caminho do ficheiro final<input value={finalDocumentPath} onChange={(event) => setFinalDocumentPath(event.target.value)} /></label>
+          <label>Etiqueta/versao<input value={finalDocumentVersion} onChange={(event) => setFinalDocumentVersion(event.target.value)} /></label>
+        </div>
+        <button onClick={registerVisibleFinalDocument}>Registar documento final</button>
+        {finalDocuments.length > 0 && (
+          <table>
+            <thead><tr><th>Nome</th><th>Tipo</th><th>Versao</th><th>Caminho local</th><th>OneDrive</th></tr></thead>
+            <tbody>
+              {finalDocuments.map((document) => (
+                <tr key={document.id}>
+                  <td>{document.fileName}</td>
+                  <td>{document.fileType}</td>
+                  <td>{document.versionLabel ?? "-"}</td>
+                  <td>{document.localPath ?? "-"}</td>
+                  <td>{document.onedrivePath ?? "-"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         )}
       </section>
     </section>

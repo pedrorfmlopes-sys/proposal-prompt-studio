@@ -134,6 +134,23 @@ returns the real exported path from the write operation, and updates
 `prompt_runs.exported_path`. Web/Vite mode does not write to disk; it returns a
 preview message because real export depends on the Tauri runtime.
 
+## Register Final Documents
+
+Final proposals are created outside the app, for example as `.pdf` or `.docx`.
+In the proposal detail view, use `Documentos finais` to enter the local file
+path and an optional version label.
+
+Desktop/Tauri mode copies the file to:
+
+```text
+<proposal local_folder_path>/final-documents/
+```
+
+The copy is registered in `final_documents`. If a file with the same name
+already exists, the app adds a suffix such as `_2` or `_3` instead of replacing
+it silently. Web/Vite mode does not access the real filesystem; it stores a
+preview record in `localStorage`.
+
 ## Create The Local Database
 
 If `sqlite3` is installed, run:

@@ -227,6 +227,14 @@ export interface FinalDocument {
   localPath: string | null;
   onedrivePath: string | null;
   versionLabel: string | null;
+  uploadedAt?: string;
+  notes?: string | null;
+}
+
+export interface RegisterFinalDocumentInput {
+  proposalId: number;
+  sourceFilePath: string;
+  versionLabel?: string;
 }
 
 export interface PriceCalculationInput {

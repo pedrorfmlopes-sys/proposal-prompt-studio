@@ -26,6 +26,16 @@ import {
   getPromptExportExtension,
   sanitizeFileName,
 } from "../src/services/promptExportService";
+import {
+  FINAL_DOCUMENT_STORAGE_KEY,
+  buildFinalDocumentPreviewRecord,
+  getFinalDocumentExtension,
+  getFinalDocuments,
+  isAllowedFinalDocumentExtension,
+  registerFinalDocument,
+  sanitizeFinalDocumentFileName,
+  validateRegisterFinalDocumentInput,
+} from "../src/services/finalDocumentService";
 import type { AppSetting, PricingRule, ProposalDetail } from "../src/types";
 
 function assertMoney(actual: number, expected: number) {
@@ -397,6 +407,89 @@ assert.throws(
   () => getPromptExportExtension("pdf" as never),
   /Unsupported prompt export format/,
 );
+
+assert.throws(
+  () =>
+    validateRegisterFinalDocumentInput({
+      proposalId: 1,
+      sourceFilePath: "",
+    }),
+  /Indica o caminho do ficheiro final/,
+);
+assert.throws(
+  () =>
+    validateRegisterFinalDocumentInput({
+      proposalId: 0,
+      sourceFilePath: "C:/Temp/Proposta_Final.pdf",
+    }),
+  /Proposal id must be greater than zero/,
+);
+assert.equal(getFinalDocumentExtension("C:/Temp/Proposta_Final.PDF"), "pdf");
+assert.equal(getFinalDocumentExtension("C:\\Temp\\Proposta_Final.docx"), "docx");
+assert.equal(isAllowedFinalDocumentExtension("pdf"), true);
+assert.equal(isAllowedFinalDocumentExtension("docx"), true);
+assert.equal(isAllowedFinalDocumentExtension("exe"), false);
+assert.throws(
+  () =>
+    validateRegisterFinalDocumentInput({
+      proposalId: 1,
+      sourceFilePath: "C:/Temp/Proposta_Final.exe",
+    }),
+  /Tipo de ficheiro nao suportado/,
+);
+assert.equal(
+  sanitizeFinalDocumentFileName('Proposta Final: Cliente/Projeto?.pdf'),
+  "Proposta_Final_Cliente_Projeto_.pdf",
+);
+const previewFinalDocument = buildFinalDocumentPreviewRecord(
+  {
+    proposalId: 12,
+    sourceFilePath: "C:/Temp/Proposta Final.pdf",
+    versionLabel: "v1 cliente",
+  },
+  [],
+);
+assert.equal(previewFinalDocument.id, 1);
+assert.equal(previewFinalDocument.proposalId, 12);
+assert.equal(previewFinalDocument.fileName, "Proposta_Final.pdf");
+assert.equal(previewFinalDocument.fileType, "pdf");
+assert.equal(previewFinalDocument.versionLabel, "v1 cliente");
+assert.match(
+  previewFinalDocument.localPath ?? "",
+  /Registo real de documentos finais disponivel apenas no runtime Tauri/,
+);
+const storage = new Map<string, string>();
+Object.defineProperty(globalThis, "window", {
+  value: {},
+  configurable: true,
+});
+Object.defineProperty(globalThis, "localStorage", {
+  value: {
+  getItem: (key: string) => storage.get(key) ?? null,
+  setItem: (key: string, value: string) => {
+    storage.set(key, value);
+  },
+  removeItem: (key: string) => {
+    storage.delete(key);
+  },
+  clear: () => storage.clear(),
+  key: (index: number) => Array.from(storage.keys())[index] ?? null,
+  get length() {
+    return storage.size;
+  },
+  } as Storage,
+  configurable: true,
+});
+localStorage.removeItem(FINAL_DOCUMENT_STORAGE_KEY);
+const fallbackFinalDocument = await registerFinalDocument({
+  proposalId: 12,
+  sourceFilePath: "C:/Temp/Proposta_Final.docx",
+});
+assert.equal(fallbackFinalDocument.fileName, "Proposta_Final.docx");
+assert.match(fallbackFinalDocument.localPath ?? "", /apenas preview/);
+const fallbackDocuments = await getFinalDocuments(12);
+assert.equal(fallbackDocuments.length, 1);
+assert.equal(fallbackDocuments[0].fileType, "docx");
 
 console.log("Service tests passed.");
 

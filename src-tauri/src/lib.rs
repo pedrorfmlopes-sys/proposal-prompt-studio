@@ -1,9 +1,10 @@
 mod commands;
 mod db;
+mod final_document_commands;
 mod folder_service;
 mod models;
-mod prompt_export_commands;
 mod prompt_commands;
+mod prompt_export_commands;
 mod proposal_commands;
 
 pub fn run() {
@@ -30,6 +31,9 @@ pub fn run() {
             prompt_commands::get_prompt_run_by_id,
             prompt_export_commands::export_prompt_run,
             prompt_export_commands::export_latest_prompt_run,
+            final_document_commands::register_final_document,
+            final_document_commands::get_final_documents,
+            final_document_commands::get_latest_final_document,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Proposal Prompt Studio");

@@ -204,3 +204,17 @@ pub struct PromptRun {
     pub exported_path: Option<String>,
     pub notes: Option<String>,
 }
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FinalDocument {
+    pub id: i64,
+    pub proposal_id: i64,
+    pub file_name: String,
+    pub file_type: String,
+    pub local_path: Option<String>,
+    pub onedrive_path: Option<String>,
+    pub version_label: Option<String>,
+    pub uploaded_at: String,
+    pub notes: Option<String>,
+}
